@@ -1,717 +1,678 @@
 package FinalProject;
-
 import javax.swing.*;
-import javax.swing.border.LineBorder;
+import javax.swing.border.EmptyBorder;
 import java.awt.*;
-import java.awt.event.*;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.io.PrintWriter;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Random;
 
 /**
- * #####################################
- * # NAME: (Your Name)
- * # COURSE: ICS4U
- * # FILE: Connect5GUI.java
- * # PROJECT: Connect Five on 8x8 - Level 1 (P v P) with GUI
- * # DATE: (Submission Date)
- * #####################################
+ * ICS4U Connect on 8x8 - Level 1 (Player vs Player)
+ * Single-file Java program with classes/attributes aligned to the provided UML:
+ *   Player, AIPlayer, Game, Board, Logger
  *
- * Level 1 Features:
- * - Connect 5 on 8x8
- * - A1 bottom-left, H8 top-right coordinate system
- * - Choose who goes first; first player chooses black/white
- * - Each player has 8 pieces to place
- * - After both placed 8: movement phase (move to any adjacent empty square)
- * - Win detection: 5 in a row (H/V/diagonal)
- * - Draw: 32 turns per player OR mutual agreement
- * - Logs placements/moves/results to a text file
+ * Compile + run:
+ *   javac Main.java
+ *   java Main
  */
-public class Connect5GUI extends JFrame {
+public class Connect5GUI{
 
-    // Rules/constants
-    private static final int SIZE = 8;
-    private static final int CONNECT_N = 5;
-    private static final int PIECES_PER_PLAYER = 8;
-    private static final int MAX_TURNS_PER_PLAYER = 32;
+    // =========================
+    // Player (UML-aligned)
+    // =========================
+    static class Player {
+        // UML attributes
+        String name;
+        char symbol;
+        int piecesPlaced;
 
-    // Board state (internal coordinates: r=0 is bottom, r=7 is top)
-    // 0 empty, 1 P1, 2 P2
-    private final int[][] board = new int[SIZE][SIZE];
-
-    // Player info
-    private String p1Name = "Player 1";
-    private String p2Name = "Player 2";
-    private String p1ColorName = "Black";
-    private String p2ColorName = "White";
-
-    // Turn/phase state
-    private int currentToken = 1; // 1 or 2
-    private int placedP1 = 0, placedP2 = 0;
-    private int turnsP1 = 0, turnsP2 = 0;
-
-    private enum Phase { PLACEMENT, MOVEMENT }
-    private Phase phase = Phase.PLACEMENT;
-
-    // Movement selection
-    private Integer selectedR = null;
-    private Integer selectedC = null;
-
-    // Draw agreement
-    private Integer drawRequestedBy = null; // 1 or 2
-
-    // Logging
-    private PrintWriter logOut;
-    private String logFileName;
-
-    // UI
-    private JLabel statusLabel;
-    private JTextArea quickLog;
-    private JButton requestDrawBtn, acceptDrawBtn, declineDrawBtn, newGameBtn, helpBtn;
-
-    private CellButton[][] cellButtons = new CellButton[SIZE][SIZE];
-
-    public static void main(String[] args) {
-        SwingUtilities.invokeLater(() -> {
-            Connect5GUI app = new Connect5GUI();
-            app.setVisible(true);
-            app.startNewGame();
-        });
-    }
-
-    public Connect5GUI() {
-        super("Connect 5 on 8x8 - Level 1 (Player vs Player)");
-        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setResizable(false);
-
-        buildUI();
-
-        addWindowListener(new WindowAdapter() {
-            @Override public void windowClosing(WindowEvent e) {
-                closeLogger();
-            }
-        });
-
-        pack();
-        setLocationRelativeTo(null);
-    }
-
-    private void buildUI() {
-        JPanel root = new JPanel(new BorderLayout(10, 10));
-        root.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
-        setContentPane(root);
-
-        // Board panel with coordinates:
-        // We'll build a 9x9 grid:
-        // row 0: blank + letters A..H
-        // rows 1..8: number (8..1) + 8 cells
-        JPanel boardPanel = new JPanel(new GridLayout(SIZE + 1, SIZE + 1, 2, 2));
-        boardPanel.setBackground(Color.DARK_GRAY);
-
-        // Top-left blank
-        boardPanel.add(coordLabel(""));
-
-        // Top letters A..H
-        for (int c = 0; c < SIZE; c++) {
-            char letter = (char) ('A' + c);
-            boardPanel.add(coordLabel(String.valueOf(letter)));
+        Player(String name, char symbol) {
+            this.name = name;
+            this.symbol = symbol;
+            this.piecesPlaced = 0;
         }
 
-        // Rows (top to bottom): 8..1
-        for (int displayRow = 0; displayRow < SIZE; displayRow++) {
-            int rowNumber = SIZE - displayRow; // 8..1
-            boardPanel.add(coordLabel(String.valueOf(rowNumber)));
-
-            for (int c = 0; c < SIZE; c++) {
-                int r = internalRowFromDisplay(displayRow); // internal r (0 bottom)
-                CellButton btn = new CellButton(r, c);
-                btn.setPreferredSize(new Dimension(60, 60));
-                btn.setFocusPainted(false);
-                btn.setBorder(new LineBorder(Color.BLACK, 1));
-                btn.addActionListener(e -> onCellClicked(btn.r, btn.c));
-                cellButtons[r][c] = btn;
-                boardPanel.add(btn);
-            }
-        }
-
-        // Right panel controls
-        JPanel right = new JPanel();
-        right.setLayout(new BoxLayout(right, BoxLayout.Y_AXIS));
-
-        statusLabel = new JLabel(" ");
-        statusLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
-
-        newGameBtn = new JButton("New Game");
-        newGameBtn.setAlignmentX(Component.LEFT_ALIGNMENT);
-        newGameBtn.addActionListener(e -> startNewGame());
-
-        requestDrawBtn = new JButton("Request Draw");
-        requestDrawBtn.setAlignmentX(Component.LEFT_ALIGNMENT);
-        requestDrawBtn.addActionListener(e -> requestDraw());
-
-        acceptDrawBtn = new JButton("Accept Draw");
-        acceptDrawBtn.setAlignmentX(Component.LEFT_ALIGNMENT);
-        acceptDrawBtn.addActionListener(e -> acceptDraw());
-
-        declineDrawBtn = new JButton("Decline Draw");
-        declineDrawBtn.setAlignmentX(Component.LEFT_ALIGNMENT);
-        declineDrawBtn.addActionListener(e -> declineDraw());
-
-        helpBtn = new JButton("Help / Rules");
-        helpBtn.setAlignmentX(Component.LEFT_ALIGNMENT);
-        helpBtn.addActionListener(e -> showHelp());
-
-        quickLog = new JTextArea(14, 28);
-        quickLog.setEditable(false);
-        quickLog.setLineWrap(true);
-        quickLog.setWrapStyleWord(true);
-        JScrollPane scroll = new JScrollPane(quickLog);
-        scroll.setAlignmentX(Component.LEFT_ALIGNMENT);
-
-        right.add(statusLabel);
-        right.add(Box.createVerticalStrut(10));
-        right.add(newGameBtn);
-        right.add(Box.createVerticalStrut(6));
-        right.add(requestDrawBtn);
-        right.add(Box.createVerticalStrut(6));
-        right.add(acceptDrawBtn);
-        right.add(Box.createVerticalStrut(6));
-        right.add(declineDrawBtn);
-        right.add(Box.createVerticalStrut(12));
-        right.add(helpBtn);
-        right.add(Box.createVerticalStrut(12));
-        right.add(new JLabel("Quick Log:"));
-        right.add(Box.createVerticalStrut(4));
-        right.add(scroll);
-
-        root.add(boardPanel, BorderLayout.CENTER);
-        root.add(right, BorderLayout.EAST);
-
-        updateDrawButtons();
-    }
-
-    private JLabel coordLabel(String text) {
-        JLabel lbl = new JLabel(text, SwingConstants.CENTER);
-        lbl.setOpaque(true);
-        lbl.setBackground(new Color(240, 240, 240));
-        lbl.setBorder(new LineBorder(Color.GRAY, 1));
-        return lbl;
-    }
-
-    // displayRow: 0..7 top->bottom, internal r: 7..0
-    private int internalRowFromDisplay(int displayRow) {
-        return (SIZE - 1) - displayRow;
-    }
-
-    private void startNewGame() {
-        // Close previous log (if any)
-        closeLogger();
-
-        // Reset board and state
-        for (int r = 0; r < SIZE; r++) {
-            for (int c = 0; c < SIZE; c++) board[r][c] = 0;
-        }
-        selectedR = null;
-        selectedC = null;
-        drawRequestedBy = null;
-
-        placedP1 = placedP2 = 0;
-        turnsP1 = turnsP2 = 0;
-        phase = Phase.PLACEMENT;
-
-        // Setup dialog (names, first player, first color)
-        if (!runSetupDialog()) {
-            // User canceled: keep window open, but no game
-            quickLog.setText("Setup canceled.\n");
-            repaintBoard();
-            updateStatus();
-            return;
-        }
-
-        // Create new log file
-        openLogger();
-
-        // Determine who starts
-        // (setup dialog sets currentToken accordingly)
-        logLine("=== Connect 5 (8x8) Level 1 Log ===");
-        logLine("Start: " + nowStamp());
-        logLine("Player 1: " + p1Name + " (" + p1ColorName + ")");
-        logLine("Player 2: " + p2Name + " (" + p2ColorName + ")");
-        logLine("First turn: " + currentPlayerName());
-        logLine("");
-
-        quickLog.setText("");
-        appendQuick("Log file: " + logFileName);
-        appendQuick("Started: " + nowStamp());
-        appendQuick(p1Name + " = " + p1ColorName + ", " + p2Name + " = " + p2ColorName);
-        appendQuick("First: " + currentPlayerName());
-
-        repaintBoard();
-        updateStatus();
-        updateDrawButtons();
-    }
-
-    private boolean runSetupDialog() {
-        JTextField p1Field = new JTextField(p1Name);
-        JTextField p2Field = new JTextField(p2Name);
-
-        String[] firstOptions = {"Player 1", "Player 2"};
-        JComboBox<String> firstBox = new JComboBox<>(firstOptions);
-
-        String[] colorOptions = {"Black", "White"};
-        JComboBox<String> colorBox = new JComboBox<>(colorOptions);
-
-        JPanel panel = new JPanel(new GridLayout(0, 2, 8, 8));
-        panel.add(new JLabel("Player 1 name:"));
-        panel.add(p1Field);
-        panel.add(new JLabel("Player 2 name:"));
-        panel.add(p2Field);
-        panel.add(new JLabel("Who goes first?"));
-        panel.add(firstBox);
-        panel.add(new JLabel("First player chooses:"));
-        panel.add(colorBox);
-
-        int result = JOptionPane.showConfirmDialog(
-                this, panel, "Game Setup", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
-
-        if (result != JOptionPane.OK_OPTION) return false;
-
-        p1Name = p1Field.getText().trim().isEmpty() ? "Player 1" : p1Field.getText().trim();
-        p2Name = p2Field.getText().trim().isEmpty() ? "Player 2" : p2Field.getText().trim();
-
-        int firstIdx = firstBox.getSelectedIndex(); // 0 => P1, 1 => P2
-        String firstColor = (String) colorBox.getSelectedItem();
-
-        // Assign colors so the first player gets chosen color
-        if (firstIdx == 0) {
-            p1ColorName = firstColor;
-            p2ColorName = firstColor.equals("Black") ? "White" : "Black";
-            currentToken = 1;
-        } else {
-            p2ColorName = firstColor;
-            p1ColorName = firstColor.equals("Black") ? "White" : "Black";
-            currentToken = 2;
-        }
-
-        return true;
-    }
-
-    private void onCellClicked(int r, int c) {
-        if (isGameOver()) return;
-
-        if (phase == Phase.PLACEMENT) {
-            handlePlacement(r, c);
-        } else {
-            handleMovement(r, c);
-        }
-
-        repaintBoard();
-        updateStatus();
-        updateDrawButtons();
-
-        // If game ended on this action, show dialog
-        if (isGameOver()) {
-            int winner = findWinner();
-            if (winner != 0) {
-                JOptionPane.showMessageDialog(this,
-                        "Winner: " + playerName(winner) + " (" + playerColor(winner) + ")",
-                        "Game Over", JOptionPane.INFORMATION_MESSAGE);
-            } else {
-                JOptionPane.showMessageDialog(this, "Draw.", "Game Over", JOptionPane.INFORMATION_MESSAGE);
-            }
+        // UML method
+        public void makeMove(Board board, String phase) {
+            // Level 1 uses GUI clicks, so this method is intentionally minimal.
+            // The Game/GUI orchestrate moves.
         }
     }
 
-    private void handlePlacement(int r, int c) {
-        if (board[r][c] != 0) {
-            warn("You cannot place on an occupied square.");
-            return;
-        }
+    // =========================
+    // AIPlayer (UML-aligned)
+    // (Not used in Level 1, included so your UML structure is satisfied.)
+    // =========================
+    static class AIPlayer extends Player {
+        // UML attributes
+        String difficulty;
 
-        if (currentToken == 1 && placedP1 >= PIECES_PER_PLAYER) {
-            warn(p1Name + " has already placed all pieces.");
-            return;
-        }
-        if (currentToken == 2 && placedP2 >= PIECES_PER_PLAYER) {
-            warn(p2Name + " has already placed all pieces.");
-            return;
-        }
-
-        // Place
-        board[r][c] = currentToken;
-        if (currentToken == 1) { placedP1++; turnsP1++; }
-        else { placedP2++; turnsP2++; }
-
-        logLine("[" + nowStamp() + "] " + currentPlayerName() + " PLACE " + squareLabel(r, c));
-        appendQuick(currentPlayerName() + " placed at " + squareLabel(r, c));
-
-        // Decline opponent draw request implicitly by playing
-        if (drawRequestedBy != null && drawRequestedBy != currentToken) {
-            declineDrawInternal("Draw request declined by play.");
-        }
-
-        // Check win/draw, then advance
-        if (postActionCheckEnd()) return;
-
-        // Transition to movement when both have 8 placed
-        if (placedP1 >= PIECES_PER_PLAYER && placedP2 >= PIECES_PER_PLAYER) {
-            phase = Phase.MOVEMENT;
-            logLine("PHASE CHANGE: movement mode begins (all pieces placed).");
-            appendQuick("Movement phase begins.");
-        }
-
-        advanceTurn();
-    }
-
-    private void handleMovement(int r, int c) {
-        // selecting a piece
-        if (selectedR == null) {
-            if (board[r][c] != currentToken) {
-                warn("Select one of your own pieces.");
-                return;
-            }
-            selectedR = r;
-            selectedC = c;
-            return;
-        }
-
-        // if click another own piece, reselect
-        if (board[r][c] == currentToken) {
-            selectedR = r;
-            selectedC = c;
-            return;
-        }
-
-        // attempt move to empty adjacent
-        if (board[r][c] != 0) {
-            warn("Destination must be empty.");
-            return;
-        }
-
-        int rf = selectedR, cf = selectedC;
-        if (!isAdjacent(rf, cf, r, c)) {
-            warn("Move must be to an adjacent square (8 directions).");
-            return;
-        }
-
-        // Move
-        board[rf][cf] = 0;
-        board[r][c] = currentToken;
-        if (currentToken == 1) turnsP1++;
-        else turnsP2++;
-
-        logLine("[" + nowStamp() + "] " + currentPlayerName() + " MOVE " + squareLabel(rf, cf) + " -> " + squareLabel(r, c));
-        appendQuick(currentPlayerName() + " moved " + squareLabel(rf, cf) + " -> " + squareLabel(r, c));
-
-        selectedR = null;
-        selectedC = null;
-
-        // Decline opponent draw request implicitly by playing
-        if (drawRequestedBy != null && drawRequestedBy != currentToken) {
-            declineDrawInternal("Draw request declined by play.");
-        }
-
-        if (postActionCheckEnd()) return;
-
-        advanceTurn();
-    }
-
-    private boolean isAdjacent(int r1, int c1, int r2, int c2) {
-        int dr = Math.abs(r2 - r1);
-        int dc = Math.abs(c2 - c1);
-        return (dr == 0 && dc == 0) ? false : (dr <= 1 && dc <= 1);
-    }
-
-    private void advanceTurn() {
-        currentToken = (currentToken == 1) ? 2 : 1;
-    }
-
-    private boolean postActionCheckEnd() {
-        int winner = findWinner();
-        if (winner != 0) {
-            logLine("RESULT: WINNER = " + playerName(winner) + " (" + playerColor(winner) + ")");
-            return true;
-        }
-
-        // Turn-limit draw: 32 turns each
-        if (turnsP1 >= MAX_TURNS_PER_PLAYER && turnsP2 >= MAX_TURNS_PER_PLAYER) {
-            logLine("RESULT: DRAW (turn limit reached)");
-            return true;
-        }
-
-        return false;
-    }
-
-    private boolean isGameOver() {
-        if (findWinner() != 0) return true;
-        return (turnsP1 >= MAX_TURNS_PER_PLAYER && turnsP2 >= MAX_TURNS_PER_PLAYER);
-    }
-
-    private int findWinner() {
-        // directions: up, right, up-right, down-right (in internal coords: up is +1 row)
-        int[][] dirs = {{1,0},{0,1},{1,1},{-1,1}};
-
-        for (int r = 0; r < SIZE; r++) {
-            for (int c = 0; c < SIZE; c++) {
-                int token = board[r][c];
-                if (token == 0) continue;
-
-                for (int[] d : dirs) {
-                    if (hasNFrom(r, c, d[0], d[1], token, CONNECT_N)) return token;
-                }
-            }
-        }
-        return 0;
-    }
-
-    private boolean hasNFrom(int r, int c, int dr, int dc, int token, int n) {
-        for (int k = 1; k < n; k++) {
-            int rr = r + dr * k;
-            int cc = c + dc * k;
-            if (!inBounds(rr, cc) || board[rr][cc] != token) return false;
-        }
-        return true;
-    }
-
-    private boolean inBounds(int r, int c) {
-        return r >= 0 && r < SIZE && c >= 0 && c < SIZE;
-    }
-
-    // Coordinate label (A1 bottom-left)
-    private String squareLabel(int r, int c) {
-        char col = (char) ('A' + c);
-        int row = r + 1; // internal r=0 is row 1
-        return "" + col + row;
-    }
-
-    private void repaintBoard() {
-        for (int r = 0; r < SIZE; r++) {
-            for (int c = 0; c < SIZE; c++) {
-                cellButtons[r][c].setToken(board[r][c]);
-                boolean selected = (selectedR != null && selectedR == r && selectedC == c);
-                cellButtons[r][c].setSelectedHighlight(selected);
-            }
-        }
-        repaint();
-    }
-
-    private void updateStatus() {
-        String phaseText = (phase == Phase.PLACEMENT) ? "PLACEMENT" : "MOVEMENT";
-        String turnText = "Turn: " + currentPlayerName() + " (" + playerColor(currentToken) + ")";
-        String piecesText = "Pieces placed: " + p1Name + "=" + placedP1 + "/" + PIECES_PER_PLAYER
-                + ", " + p2Name + "=" + placedP2 + "/" + PIECES_PER_PLAYER;
-        String turnsText = "Turns taken: " + p1Name + "=" + turnsP1 + "/" + MAX_TURNS_PER_PLAYER
-                + ", " + p2Name + "=" + turnsP2 + "/" + MAX_TURNS_PER_PLAYER;
-
-        String instruction;
-        if (isGameOver()) {
-            int winner = findWinner();
-            if (winner != 0) instruction = "Game Over: WINNER = " + playerName(winner) + " (" + playerColor(winner) + ")";
-            else instruction = "Game Over: DRAW";
-        } else {
-            if (phase == Phase.PLACEMENT) {
-                instruction = "Click an empty square to place a piece.";
-            } else {
-                if (selectedR == null) instruction = "Click one of your pieces to select it.";
-                else instruction = "Selected " + squareLabel(selectedR, selectedC) + ". Click an adjacent empty square to move.";
-            }
-        }
-
-        String drawText = "";
-        if (drawRequestedBy != null && !isGameOver()) {
-            drawText = "Draw requested by: " + playerName(drawRequestedBy);
-        }
-
-        statusLabel.setText("<html>"
-                + "Phase: <b>" + phaseText + "</b><br>"
-                + turnText + "<br>"
-                + piecesText + "<br>"
-                + turnsText + "<br>"
-                + instruction + (drawText.isEmpty() ? "" : "<br>" + drawText)
-                + "</html>");
-    }
-
-    // Draw controls
-    private void requestDraw() {
-        if (isGameOver()) return;
-
-        drawRequestedBy = currentToken;
-        logLine("[" + nowStamp() + "] " + currentPlayerName() + " requested a draw.");
-        appendQuick(currentPlayerName() + " requested a draw.");
-        updateDrawButtons();
-        updateStatus();
-    }
-
-    private void acceptDraw() {
-        if (isGameOver()) return;
-        if (drawRequestedBy == null) return;
-        if (drawRequestedBy == currentToken) return; // requester cannot accept
-
-        logLine("[" + nowStamp() + "] Draw accepted by " + currentPlayerName() + ".");
-        logLine("RESULT: DRAW (mutual agreement)");
-        appendQuick("Draw accepted. Game over.");
-        repaintBoard();
-        updateStatus();
-        updateDrawButtons();
-    }
-
-    private void declineDraw() {
-        if (drawRequestedBy == null || isGameOver()) return;
-        declineDrawInternal("Draw request declined.");
-        repaintBoard();
-        updateStatus();
-        updateDrawButtons();
-    }
-
-    private void declineDrawInternal(String reason) {
-        logLine("[" + nowStamp() + "] " + reason);
-        drawRequestedBy = null;
-    }
-
-    private void updateDrawButtons() {
-        boolean active = !isGameOver();
-        requestDrawBtn.setEnabled(active);
-
-        if (!active || drawRequestedBy == null) {
-            acceptDrawBtn.setEnabled(false);
-            declineDrawBtn.setEnabled(false);
-            return;
-        }
-
-        // only non-requesting player can accept/decline
-        boolean canRespond = (drawRequestedBy != currentToken);
-        acceptDrawBtn.setEnabled(canRespond);
-        declineDrawBtn.setEnabled(canRespond);
-    }
-
-    private void showHelp() {
-        String msg =
-                "Connect 5 on 8x8 (Level 1)\n\n" +
-                "Placement phase:\n" +
-                "- Each player places 8 pieces by clicking an empty square.\n\n" +
-                "Movement phase:\n" +
-                "- Click one of your pieces, then click an adjacent empty square (8 directions).\n\n" +
-                "Win:\n" +
-                "- Connect 5 in a row (horizontal, vertical, diagonal).\n\n" +
-                "Draw:\n" +
-                "- If no winner after 32 turns per player (64 total actions), or both agree.\n\n" +
-                "Coordinates:\n" +
-                "- A1 is bottom-left, H8 is top-right.";
-        JOptionPane.showMessageDialog(this, msg, "Help / Rules", JOptionPane.INFORMATION_MESSAGE);
-    }
-
-    // Utilities
-    private void warn(String msg) {
-        JOptionPane.showMessageDialog(this, msg, "Invalid", JOptionPane.WARNING_MESSAGE);
-    }
-
-    private String currentPlayerName() {
-        return (currentToken == 1) ? p1Name : p2Name;
-    }
-
-    private String playerName(int token) {
-        return (token == 1) ? p1Name : p2Name;
-    }
-
-    private String playerColor(int token) {
-        return (token == 1) ? p1ColorName : p2ColorName;
-    }
-
-    // Logging
-    private void openLogger() {
-        try {
-            String stamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
-            logFileName = "connect5_log_" + stamp + ".txt";
-            Path path = Path.of(logFileName);
-            logOut = new PrintWriter(Files.newBufferedWriter(path, StandardCharsets.UTF_8));
-        } catch (Exception e) {
-            logOut = null;
-            logFileName = "(logging unavailable)";
-            appendQuick("WARNING: Could not create log file: " + e.getMessage());
-        }
-    }
-
-    private void closeLogger() {
-        try {
-            if (logOut != null) {
-                logLine("");
-                logLine("End: " + nowStamp());
-                logOut.flush();
-                logOut.close();
-            }
-        } catch (Exception ignored) {}
-        logOut = null;
-    }
-
-    private void logLine(String line) {
-        if (logOut != null) {
-            logOut.println(line);
-            logOut.flush();
-        }
-    }
-
-    private void appendQuick(String line) {
-        quickLog.append(line + "\n");
-        quickLog.setCaretPosition(quickLog.getDocument().getLength());
-    }
-
-    private String nowStamp() {
-        return LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
-    }
-
-    // Custom button that draws a piece (black/white) based on token
-    private class CellButton extends JButton {
-        private final int r, c;
-        private int token = 0;
-        private boolean selected = false;
-
-        CellButton(int r, int c) {
-            this.r = r;
-            this.c = c;
-            setBackground(((r + c) % 2 == 0) ? new Color(240, 217, 181) : new Color(181, 136, 99));
-        }
-
-        void setToken(int token) {
-            this.token = token;
-            repaint();
-        }
-
-        void setSelectedHighlight(boolean selected) {
-            this.selected = selected;
-            setBorder(new LineBorder(selected ? Color.RED : Color.BLACK, selected ? 3 : 1));
-            repaint();
+        AIPlayer(String name, char symbol, String difficulty) {
+            super(name, symbol);
+            this.difficulty = difficulty;
         }
 
         @Override
-        protected void paintComponent(Graphics g) {
-            super.paintComponent(g);
+        public void makeMove(Board board, String phase) {
+            // Not used for Level 1.
+        }
 
-            if (token == 0) return;
+        // UML method
+        public void chooseMove(Board board) {
+            // Not used for Level 1.
+        }
+    }
 
-            Graphics2D g2 = (Graphics2D) g.create();
-            try {
-                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+    // =========================
+    // Board (UML-aligned)
+    // =========================
+    static class Board {
+        // UML attributes
+        char[][] grid = new char[8][8]; // [row][col], row 0 = bottom (1), row 7 = top (8)
 
-                String colorName = playerColor(token);
-                Color fill = colorName.equals("Black") ? Color.BLACK : Color.WHITE;
-
-                int pad = 10;
-                int x = pad;
-                int y = pad;
-                int w = getWidth() - 2 * pad;
-                int h = getHeight() - 2 * pad;
-
-                g2.setColor(fill);
-                g2.fillOval(x, y, w, h);
-
-                g2.setColor(Color.GRAY);
-                g2.drawOval(x, y, w, h);
-            } finally {
-                g2.dispose();
+        // UML methods
+        public void initializeBoard() {
+            for (int r = 0; r < 8; r++) {
+                for (int c = 0; c < 8; c++) {
+                    grid[r][c] = '.';
+                }
             }
         }
+
+        public boolean isValidPosition(int[] pos) {
+            if (pos == null || pos.length != 2) return false;
+            int c = pos[0], r = pos[1];
+            return c >= 0 && c < 8 && r >= 0 && r < 8;
+        }
+
+        public boolean isEmpty(int[] pos) {
+            if (!isValidPosition(pos)) return false;
+            return grid[pos[1]][pos[0]] == '.';
+        }
+
+        public boolean placePiece(int[] pos, char symbol) {
+            if (!isValidPosition(pos)) return false;
+            if (!isEmpty(pos)) return false;
+            grid[pos[1]][pos[0]] = symbol;
+            return true;
+        }
+
+        public boolean movePiece(int[] from, int[] to, char symbol) {
+            if (!isValidPosition(from) || !isValidPosition(to)) return false;
+            if (grid[from[1]][from[0]] != symbol) return false;
+            if (!isEmpty(to)) return false;
+
+            int dc = Math.abs(to[0] - from[0]);
+            int dr = Math.abs(to[1] - from[1]);
+            if (dc > 1 || dr > 1 || (dc == 0 && dr == 0)) return false; // adjacent only
+
+            grid[from[1]][from[0]] = '.';
+            grid[to[1]][to[0]] = symbol;
+            return true;
+        }
+
+        public void displayBoard() {
+            // Console display (optional). GUI is the primary display.
+            System.out.println(toConsoleString());
+        }
+
+        // Helper (not in UML) for logging/console
+        public String toConsoleString() {
+            StringBuilder sb = new StringBuilder();
+            sb.append("    A B C D E F G H\n");
+            for (int displayRow = 7; displayRow >= 0; displayRow--) {
+                sb.append(String.format("%2d  ", displayRow + 1));
+                for (int c = 0; c < 8; c++) {
+                    sb.append(grid[displayRow][c]).append(' ');
+                }
+                sb.append('\n');
+            }
+            return sb.toString();
+        }
+
+        // Helper: label like "A1" => int[]{col,row}
+        public static int[] labelToPos(String label) {
+            if (label == null) throw new IllegalArgumentException("Invalid position.");
+            String s = label.trim().toUpperCase();
+            if (s.length() < 2) throw new IllegalArgumentException("Invalid position.");
+            char colCh = s.charAt(0);
+            int col = colCh - 'A';
+            int row;
+            try {
+                row = Integer.parseInt(s.substring(1)) - 1;
+            } catch (NumberFormatException e) {
+                throw new IllegalArgumentException("Invalid position.");
+            }
+            if (col < 0 || col > 7 || row < 0 || row > 7) throw new IllegalArgumentException("Invalid position.");
+            return new int[]{col, row};
+        }
+
+        public static String posToLabel(int c, int r) {
+            return "" + (char)('A' + c) + (r + 1);
+        }
+    }
+
+    // =========================
+    // Logger (UML-aligned)
+    // =========================
+    static class Logger {
+        // UML attribute
+        String fileName;
+
+        private PrintWriter out; // helper
+
+        Logger(String fileName) {
+            this.fileName = fileName;
+        }
+
+        // UML methods
+        public void writeToFile(String text) {
+            try {
+                if (out == null) {
+                    out = new PrintWriter(new FileWriter(fileName, true));
+                }
+                out.println(text);
+                out.flush();
+            } catch (IOException ignored) {
+            }
+        }
+
+        public void closeFile() {
+            if (out != null) {
+                out.flush();
+                out.close();
+                out = null;
+            }
+        }
+    }
+
+    // =========================
+    // Game (UML-aligned)
+    // =========================
+    static class Game {
+        // UML attributes
+        Board board;
+        Player[] players;
+        int currentPlayerIndex;
+        int turnCount;
+        int connectTarget;
+        int maxPieces;
+        String gamePhase; // "PLACEMENT" or "MOVEMENT"
+        Player winner;
+        Logger logger;
+
+        // Helpers (not in UML)
+        private int[] selectedFrom = null;
+        private boolean draw = false;
+        private Integer drawOfferFrom = null;
+
+        Game(int connectTarget, int maxPieces, Logger logger) {
+            this.connectTarget = connectTarget;
+            this.maxPieces = maxPieces;
+            this.logger = logger;
+
+            this.board = new Board();
+            this.board.initializeBoard();
+
+            this.players = new Player[2];
+            this.currentPlayerIndex = 0;
+            this.turnCount = 1;
+            this.gamePhase = "PLACEMENT";
+            this.winner = null;
+        }
+
+        // UML methods
+        public void startGame() {
+            // GUI triggers this flow; this method exists to match UML.
+        }
+
+        public void playTurn() {
+            // GUI triggers this flow; this method exists to match UML.
+        }
+
+        public void checkWinner() {
+            char w = findWinnerSymbol();
+            if (w == 0) {
+                winner = null;
+            } else {
+                winner = (players[0].symbol == w) ? players[0] : players[1];
+            }
+        }
+
+        public void switchPlayer() {
+            currentPlayerIndex = 1 - currentPlayerIndex;
+        }
+
+        public void endGame() {
+            // GUI will show message; this method exists to match UML.
+            if (logger != null) logger.closeFile();
+        }
+
+        // Gameplay API for GUI
+        public Player currentPlayer() { return players[currentPlayerIndex]; }
+        public Player otherPlayer() { return players[1 - currentPlayerIndex]; }
+
+        public boolean isGameOver() {
+            checkWinner();
+            if (winner != null) return true;
+            if (draw) return true;
+            // Draw by turn count (approx. 32 turns each => 64 total turns).
+            return turnCount >= 65; // after 64 turns have completed, next would be 65
+        }
+
+        public boolean isDraw() {
+            if (draw) return true;
+            return (winner == null && turnCount >= 65);
+        }
+
+        public String offerOrAcceptDraw() {
+            if (winner != null) return "Game is already over.";
+            if (draw) return "Game is already a draw.";
+
+            int offeringIndex = currentPlayerIndex;
+            if (drawOfferFrom == null) {
+                drawOfferFrom = offeringIndex;
+                return currentPlayer().name + " offered a draw. Other player must accept on their turn.";
+            } else {
+                if (drawOfferFrom == offeringIndex) {
+                    return "Draw offer is pending from " + currentPlayer().name + ". Other player must accept.";
+                } else {
+                    draw = true;
+                    return "Draw agreed by both players.";
+                }
+            }
+        }
+
+        public String handleClick(int c, int r) {
+            if (isGameOver()) return "Game is over.";
+
+            Player p = currentPlayer();
+            String desc;
+
+            if ("PLACEMENT".equals(gamePhase)) {
+                if (p.piecesPlaced >= maxPieces) {
+                    return "No pieces left to place. Wait for movement phase.";
+                }
+                boolean ok = board.placePiece(new int[]{c, r}, p.symbol);
+                if (!ok) return "Invalid placement. Choose an empty square.";
+
+                p.piecesPlaced++;
+                desc = p.name + " (P" + (currentPlayerIndex + 1) + ") PLACE " + Board.posToLabel(c, r);
+
+                // If both placed all pieces, switch phase
+                if (players[0].piecesPlaced >= maxPieces && players[1].piecesPlaced >= maxPieces) {
+                    gamePhase = "MOVEMENT";
+                }
+
+                // End turn
+                logTurn(desc);
+                advanceTurn();
+                return desc;
+            } else {
+                // MOVEMENT
+                if (selectedFrom == null) {
+                    if (board.grid[r][c] != p.symbol) {
+                        return "Select one of your own pieces to move.";
+                    }
+                    selectedFrom = new int[]{c, r};
+                    return "Selected " + Board.posToLabel(c, r) + " to move.";
+                } else {
+                    int fromC = selectedFrom[0];
+                    int fromR = selectedFrom[1];
+
+                    if (fromC == c && fromR == r) {
+                        selectedFrom = null;
+                        return "Selection cleared.";
+                    }
+
+                    boolean ok = board.movePiece(new int[]{fromC, fromR}, new int[]{c, r}, p.symbol);
+                    if (!ok) return "Invalid move. Move 1 square to an adjacent empty space.";
+
+                    desc = p.name + " (P" + (currentPlayerIndex + 1) + ") MOVE " +
+                            Board.posToLabel(fromC, fromR) + " -> " + Board.posToLabel(c, r);
+                    selectedFrom = null;
+
+                    logTurn(desc);
+                    advanceTurn();
+                    return desc;
+                }
+            }
+        }
+
+        public int[] getSelectedFrom() { return selectedFrom; }
+
+        private void advanceTurn() {
+            // check win after a completed action
+            checkWinner();
+            if (winner != null) {
+                logResult("RESULT: " + winner.name + " wins by connecting " + connectTarget + "!");
+                return;
+            }
+            if (isDraw()) {
+                logResult("RESULT: Draw.");
+                return;
+            }
+
+            switchPlayer();
+            turnCount++;
+        }
+
+        private void logTurn(String desc) {
+            if (logger == null) return;
+            logger.writeToFile("Turn " + turnCount + ": " + desc);
+            logger.writeToFile(board.toConsoleString());
+        }
+
+        private void logResult(String resultLine) {
+            if (logger == null) return;
+            logger.writeToFile("------------------------------------------------------------");
+            logger.writeToFile(resultLine);
+            logger.writeToFile("Ended: " + LocalDateTime.now().withNano(0));
+            logger.closeFile();
+        }
+
+        // Winner detection for connectTarget
+        private char findWinnerSymbol() {
+            int n = connectTarget;
+            int[][] dirs = new int[][]{{1,0},{0,1},{1,1},{1,-1}};
+
+            for (int r = 0; r < 8; r++) {
+                for (int c = 0; c < 8; c++) {
+                    char s = board.grid[r][c];
+                    if (s == '.') continue;
+
+                    for (int[] d : dirs) {
+                        int dc = d[0], dr = d[1];
+                        int count = 1;
+                        int nc = c + dc, nr = r + dr;
+
+                        while (nc >= 0 && nc < 8 && nr >= 0 && nr < 8 && board.grid[nr][nc] == s) {
+                            count++;
+                            if (count >= n) return s;
+                            nc += dc;
+                            nr += dr;
+                        }
+                    }
+                }
+            }
+            return 0;
+        }
+    }
+
+    // =========================
+    // Swing GUI (Level 1)
+    // =========================
+    public static class ConnectFrame extends JFrame {
+        private final JLabel turnLabel = new JLabel();
+        private final JLabel phaseLabel = new JLabel();
+        private final JLabel p1Label = new JLabel();
+        private final JLabel p2Label = new JLabel();
+        private final JLabel statusLabel = new JLabel(" ");
+
+        private final JButton[][] squares = new JButton[8][8]; // [displayRow][col], displayRow 0 = top
+
+        private Game game;
+
+        ConnectFrame() {
+            setTitle("Connect on 8x8 - Level 1 (One File)");
+            setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
+            setResizable(false);
+
+            buildLayout();
+            newGameDialog();
+
+            pack();
+            setLocationRelativeTo(null);
+        }
+
+        private void buildLayout() {
+            JPanel root = new JPanel(new BorderLayout(10, 10));
+            root.setBorder(new EmptyBorder(10, 10, 10, 10));
+            setContentPane(root);
+
+            // Left info
+            JPanel info = new JPanel();
+            info.setLayout(new BoxLayout(info, BoxLayout.Y_AXIS));
+            turnLabel.setFont(turnLabel.getFont().deriveFont(Font.BOLD, 14f));
+            info.add(turnLabel);
+            info.add(Box.createVerticalStrut(4));
+            info.add(phaseLabel);
+            info.add(Box.createVerticalStrut(8));
+            info.add(p1Label);
+            info.add(Box.createVerticalStrut(4));
+            info.add(p2Label);
+
+            // Right controls
+            JPanel controls = new JPanel();
+            controls.setLayout(new BoxLayout(controls, BoxLayout.Y_AXIS));
+            JButton newGameBtn = new JButton("New Game");
+            JButton drawBtn = new JButton("Offer / Accept Draw");
+            JButton quitBtn = new JButton("Quit");
+
+            newGameBtn.setAlignmentX(Component.CENTER_ALIGNMENT);
+            drawBtn.setAlignmentX(Component.CENTER_ALIGNMENT);
+            quitBtn.setAlignmentX(Component.CENTER_ALIGNMENT);
+
+            controls.add(newGameBtn);
+            controls.add(Box.createVerticalStrut(8));
+            controls.add(drawBtn);
+            controls.add(Box.createVerticalStrut(8));
+            controls.add(quitBtn);
+
+            newGameBtn.addActionListener(e -> newGameDialog());
+            drawBtn.addActionListener(e -> onDrawButton());
+            quitBtn.addActionListener(e -> dispose());
+
+            // Top panel
+            JPanel top = new JPanel(new BorderLayout(10, 10));
+            top.add(info, BorderLayout.CENTER);
+            top.add(controls, BorderLayout.EAST);
+
+            root.add(top, BorderLayout.NORTH);
+
+            // Board panel with coordinates
+            JPanel boardPanel = new JPanel(new BorderLayout());
+            JPanel gridPanel = new JPanel(new GridLayout(9, 9, 2, 2));
+
+            // Top-left empty corner
+            gridPanel.add(new JLabel(""));
+
+            // Column labels A..H
+            for (int c = 0; c < 8; c++) {
+                JLabel l = new JLabel(String.valueOf((char)('A' + c)), SwingConstants.CENTER);
+                l.setFont(l.getFont().deriveFont(Font.BOLD));
+                gridPanel.add(l);
+            }
+
+            // 8 rows: display row 0 = row 8
+            for (int displayRow = 0; displayRow < 8; displayRow++) {
+                int rowLabel = 8 - displayRow;
+                JLabel rl = new JLabel(String.valueOf(rowLabel), SwingConstants.CENTER);
+                rl.setFont(rl.getFont().deriveFont(Font.BOLD));
+                gridPanel.add(rl);
+
+                for (int c = 0; c < 8; c++) {
+                    JButton btn = new JButton("");
+                    btn.setPreferredSize(new Dimension(54, 54));
+                    btn.setFont(btn.getFont().deriveFont(Font.BOLD, 18f));
+                    final int col = c;
+                    final int dispR = displayRow;
+                    btn.addActionListener(e -> onSquareClicked(col, dispR));
+                    squares[displayRow][c] = btn;
+                    gridPanel.add(btn);
+                }
+            }
+
+            boardPanel.add(gridPanel, BorderLayout.CENTER);
+
+            root.add(boardPanel, BorderLayout.CENTER);
+
+            // Status line
+            statusLabel.setBorder(new EmptyBorder(8, 2, 0, 2));
+            root.add(statusLabel, BorderLayout.SOUTH);
+        }
+
+        private void newGameDialog() {
+            String p1Name = JOptionPane.showInputDialog(this, "Enter Player 1 name:");
+            if (p1Name == null || p1Name.trim().isEmpty()) return;
+
+            String p2Name = JOptionPane.showInputDialog(this, "Enter Player 2 name:");
+            if (p2Name == null || p2Name.trim().isEmpty()) return;
+
+            // Choose who goes first
+            int first = JOptionPane.showConfirmDialog(
+                    this,
+                    "Who goes first?\nYes = Player 1\nNo = Player 2\nCancel = Random",
+                    "First Player",
+                    JOptionPane.YES_NO_CANCEL_OPTION
+            );
+
+            int firstIndex;
+            if (first == JOptionPane.YES_OPTION) firstIndex = 0;
+            else if (first == JOptionPane.NO_OPTION) firstIndex = 1;
+            else firstIndex = new Random().nextInt(2);
+
+            // First player chooses symbol (as "color" proxy)
+            int symChoice = JOptionPane.showConfirmDialog(
+                    this,
+                    "First player chooses symbol:\nYes = X (Black)\nNo = O (White)",
+                    "Choose Symbol",
+                    JOptionPane.YES_NO_OPTION
+            );
+
+            char firstSym = (symChoice == JOptionPane.YES_OPTION) ? 'X' : 'O';
+            char secondSym = (firstSym == 'X') ? 'O' : 'X';
+
+            Player p1, p2;
+            if (firstIndex == 0) {
+                p1 = new Player(p1Name.trim(), firstSym);
+                p2 = new Player(p2Name.trim(), secondSym);
+            } else {
+                p1 = new Player(p1Name.trim(), secondSym);
+                p2 = new Player(p2Name.trim(), firstSym);
+            }
+
+            // Logger file
+            String ts = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
+            String logName = "connect_log_" + ts + ".txt";
+            Logger logger = new Logger(logName);
+
+            // Header
+            logger.writeToFile("Connect on 8x8 - Level 1 Log");
+            logger.writeToFile("Started: " + LocalDateTime.now().withNano(0));
+            logger.writeToFile("Connect target: 5");
+            logger.writeToFile("Pieces per player (placement phase): 8");
+            logger.writeToFile("------------------------------------------------------------");
+
+            game = new Game(5, 8, logger);
+            game.players[0] = p1;
+            game.players[1] = p2;
+            game.currentPlayerIndex = firstIndex;
+            game.turnCount = 1;
+            game.gamePhase = "PLACEMENT";
+            game.winner = null;
+
+            statusLabel.setText("New game started. Log: " + logName + ". Click squares to place pieces.");
+            render();
+        }
+
+        private void onDrawButton() {
+            if (game == null) return;
+            String msg = game.offerOrAcceptDraw();
+            statusLabel.setText(msg);
+            if (game.logger != null) {
+                game.logger.writeToFile("Turn " + game.turnCount + ": " + msg);
+            }
+            render();
+            checkGameOverPopup();
+        }
+
+        private void onSquareClicked(int col, int displayRow) {
+            if (game == null) return;
+
+            // displayRow 0..7 (top..bottom) => internal row 7..0
+            int r = 7 - displayRow;
+            int c = col;
+
+            String msg = game.handleClick(c, r);
+            statusLabel.setText(msg);
+
+            render();
+            checkGameOverPopup();
+        }
+
+        private void checkGameOverPopup() {
+            if (game == null) return;
+            game.checkWinner();
+
+            if (game.winner != null) {
+                String msg = game.winner.name + " wins by connecting " + game.connectTarget + "!";
+                statusLabel.setText(msg);
+                JOptionPane.showMessageDialog(this, msg, "Game Over", JOptionPane.INFORMATION_MESSAGE);
+                disableBoard();
+            } else if (game.isDraw()) {
+                String msg = "Game ended in a draw.";
+                statusLabel.setText(msg);
+                JOptionPane.showMessageDialog(this, msg, "Game Over", JOptionPane.INFORMATION_MESSAGE);
+                disableBoard();
+            }
+        }
+
+        private void disableBoard() {
+            for (int dr = 0; dr < 8; dr++) {
+                for (int c = 0; c < 8; c++) {
+                    squares[dr][c].setEnabled(false);
+                }
+            }
+        }
+
+        private void render() {
+            if (game == null) return;
+
+            Player p1 = game.players[0];
+            Player p2 = game.players[1];
+
+            turnLabel.setText("Turn: " + game.turnCount + " | Current: " + game.currentPlayer().name);
+            phaseLabel.setText("Phase: " + game.gamePhase + " | Connect " + game.connectTarget);
+
+            p1Label.setText("Player 1: " + p1.name + " (" + p1.symbol + ") | piecesPlaced: " + p1.piecesPlaced);
+            p2Label.setText("Player 2: " + p2.name + " (" + p2.symbol + ") | piecesPlaced: " + p2.piecesPlaced);
+
+            int[] sel = game.getSelectedFrom();
+
+            // Draw board: internal row 7..0 => display row 0..7
+            for (int displayRow = 0; displayRow < 8; displayRow++) {
+                int r = 7 - displayRow;
+                for (int c = 0; c < 8; c++) {
+                    char v = game.board.grid[r][c];
+                    JButton btn = squares[displayRow][c];
+
+                    btn.setEnabled(!game.isGameOver());
+
+                    if (v == '.') {
+                        btn.setText("");
+                        btn.setBackground(UIManager.getColor("Button.background"));
+                    } else {
+                        btn.setText(String.valueOf(v));
+                        btn.setBackground(v == 'X' ? Color.LIGHT_GRAY : Color.WHITE);
+                    }
+
+                    // Highlight selection (movement phase)
+                    if (sel != null && sel[0] == c && sel[1] == r) {
+                        btn.setBackground(new Color(255, 255, 170));
+                    }
+                }
+            }
+        }
+    }
+
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(() -> {
+            ConnectFrame f = new ConnectFrame();
+            f.setVisible(true);
+        });
     }
 }
