@@ -522,7 +522,7 @@ public class Connect5GUI {
         }
 
         public String offerOrAcceptDraw() {
-            if (!drawAvailable()) return "Draw is only available in Level 1 (2 human players).";
+            if (!drawAvailable()) return "Draw is only available in Level 1 (2  players).";
             if (winner != null) return "Game is already over.";
             if (draw) return "Game is already a draw.";
 
@@ -881,7 +881,7 @@ public class Connect5GUI {
             private final JTextField l2human = new JTextField(16);
             private final JComboBox<String> l2diff = new JComboBox<>(new String[]{"BEGINNER", "MEDIUM", "SMART"});
 
-            private final JRadioButton mpHumansOnlyBtn = new JRadioButton("Multiplayer (Humans only: 3–4 players)", true);
+            private final JRadioButton mpHumansOnlyBtn = new JRadioButton("Multiplayer 3–4 players)", true);
             private final JRadioButton mpVsAIBtn       = new JRadioButton("Players versus AI (3–4 players vs AI)");
 
             private final JComboBox<Integer> mpHumanCount = new JComboBox<>(new Integer[]{3, 4});
@@ -1017,7 +1017,7 @@ public class Connect5GUI {
             }
 
             private JPanel buildLevel1Panel() {
-                JPanel p = buildCardPanel("Level 1: Player vs Player (2 humans)");
+                JPanel p = buildCardPanel("Level 1: Player vs Player (2 players)");
                 GridBagConstraints g = new GridBagConstraints();
                 g.insets = new Insets(6, 6, 6, 6);
                 g.anchor = GridBagConstraints.WEST;
@@ -1058,7 +1058,7 @@ public class Connect5GUI {
                 g.gridx = 0; g.gridy = 2; p.add(b, g);
                 g.gridx = 1; p.add(l2diff, g);
 
-                JLabel note = new JLabel("Spin chooses first (Human or AI). Then first chooses Black/White.");
+                JLabel note = new JLabel("Spin chooses first (Player or AI). Then first chooses Black/White.");
                 note.setForeground(TEXT_LIGHT);
                 note.setFont(note.getFont().deriveFont(12f));
                 g.gridx = 0; g.gridy = 3; g.gridwidth = 2;
@@ -1081,7 +1081,7 @@ public class Connect5GUI {
                 g.gridx = 0; g.gridy = 1; g.gridwidth = 2; p.add(mpHumansOnlyBtn, g);
                 g.gridy++; p.add(mpVsAIBtn, g);
 
-                JLabel hc = new JLabel("Human Players (3–4):");
+                JLabel hc = new JLabel("Players (3–4):");
                 hc.setForeground(TEXT_LIGHT);
                 g.gridy++; g.gridwidth = 1;
                 g.gridx = 0; p.add(hc, g);
@@ -1103,15 +1103,15 @@ public class Connect5GUI {
                 g.gridy++; g.gridx = 0; g.gridwidth = 2; p.add(sep, g);
                 g.gridwidth = 1;
 
-                JLabel vhc = new JLabel("Human Players vs AI (3–4):");
+                JLabel vhc = new JLabel("Players vs AI (3–4):");
                 vhc.setForeground(TEXT_LIGHT);
                 g.gridy++; g.gridx = 0; p.add(vhc, g);
                 g.gridx = 1; p.add(vsHumanCount, g);
 
-                JLabel vn1 = new JLabel("Human 1 Name:");
-                JLabel vn2 = new JLabel("Human 2 Name:");
-                JLabel vn3 = new JLabel("Human 3 Name:");
-                JLabel vn4 = new JLabel("Human 4 Name:");
+                JLabel vn1 = new JLabel("Player 1 Name:");
+                JLabel vn2 = new JLabel("Player 2 Name:");
+                JLabel vn3 = new JLabel("Player 3 Name:");
+                JLabel vn4 = new JLabel("Player 4 Name:");
                 JLabel vd  = new JLabel("AI Difficulty:");
                 for (JLabel lab : new JLabel[]{vn1,vn2,vn3,vn4,vd}) lab.setForeground(TEXT_LIGHT);
 
@@ -1122,7 +1122,7 @@ public class Connect5GUI {
 
                 g.gridy++; g.gridx = 0; p.add(vd, g);  g.gridx = 1; p.add(vsDiff, g);
 
-                JLabel note = new JLabel("Spin chooses first. Humans use Black/White/Blue/Green. AI uses Green (3 humans) or Red (4 humans).");
+                JLabel note = new JLabel("Spin chooses first players use Black/White/Blue/Green. AI uses Green (3 players s) or Red (4 players).");
                 note.setForeground(TEXT_LIGHT);
                 note.setFont(note.getFont().deriveFont(12f));
                 g.gridy++; g.gridx = 0; g.gridwidth = 2; p.add(note, g);
@@ -1202,7 +1202,7 @@ public class Connect5GUI {
                 AIPlayer ai  = new AIPlayer("Computer", WHITE, diff);
                 Player[] players = new Player[]{human, ai};
 
-                String[] labels = new String[]{ human.name + " (Human)", ai.name + " (AI)" };
+                String[] labels = new String[]{ human.name + " (Player)", ai.name + " (AI)" };
                 SpinDialogN spin = new SpinDialogN(ConnectFrame.this, "Who Goes First? (Level 2)", labels);
                 Integer firstIdx = spin.showAndGetResult();
                 if (firstIdx == null) return;
@@ -1255,7 +1255,7 @@ public class Connect5GUI {
                     Integer firstIdx = spin.showAndGetResult();
                     if (firstIdx == null) return;
 
-                    gamePanel.startNewGame(players, firstIdx, "Level 3-4 (Humans only)");
+                    gamePanel.startNewGame(players, firstIdx, "Level 3-4 (Players only)");
                     cards.show(root, "GAME");
 
                 } else {
@@ -1498,7 +1498,7 @@ public class Connect5GUI {
 
             private void onDraw() {
                 if (game == null) return;
-                if (!game.drawAvailable()) { statusLabel.setText("Draw is only available in Level 1 (2 human players)."); return; }
+                if (!game.drawAvailable()) { statusLabel.setText("Draw is only available in Level 1 (2 players)."); return; }
                 if (game.currentPlayer() instanceof AIPlayer) { statusLabel.setText("It's the computer's turn."); return; }
 
                 String msg = game.offerOrAcceptDraw();
