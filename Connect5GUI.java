@@ -14,33 +14,47 @@ import java.util.Random;
 
 /**
  * Connect5GUI.java (FinalProject)
- * - Now RESIZABLE: board squares and piece icons scale with the window.
+ * <p>
+ * Main class for the Connect 5 game application.
+ * Supports:
+ * <ul>
+ * <li>Level 1: Player vs Player</li>
+ * <li>Level 2: Player vs AI</li>
+ * <li>Level 3-4: Multiplayer (3-4 players) and Humans vs AI</li>
+ * </ul>
+ * Features include a resizeable GUI, custom piece rendering, game logging, and
+ * an AI opponent with difficulty levels.
  */
 public class Connect5GUI {
 
     private static final char EMPTY = '.';
     private static final char BLACK = 'B';
     private static final char WHITE = 'W';
-    private static final char BLUE  = 'U';
+    private static final char BLUE = 'U';
     private static final char GREEN = 'G';
-    private static final char RED   = 'R';
+    private static final char RED = 'R';
 
-    private static final char[] COLOR_ORDER = new char[]{BLACK, WHITE, BLUE, GREEN};
+    private static final char[] COLOR_ORDER = new char[] { BLACK, WHITE, BLUE, GREEN };
 
     // Chessboard tiles
     private static final Color LIGHT_TILE = new Color(240, 217, 181);
-    private static final Color DARK_TILE  = new Color(181, 136, 99);
+    private static final Color DARK_TILE = new Color(181, 136, 99);
 
     // Theme
-    private static final Color APP_BG       = new Color(70, 45, 28);
-    private static final Color PANEL_BG     = new Color(96, 64, 40);
-    private static final Color CARD_BG      = new Color(110, 74, 47);
-    private static final Color TEXT_LIGHT   = new Color(245, 236, 222);
-    private static final Color TEXT_DARK    = new Color(45, 30, 20);
-    private static final Color ACCENT_GOLD  = new Color(210, 170, 90);
+    private static final Color APP_BG = new Color(70, 45, 28);
+    private static final Color PANEL_BG = new Color(96, 64, 40);
+    private static final Color CARD_BG = new Color(110, 74, 47);
+    private static final Color TEXT_LIGHT = new Color(245, 236, 222);
+    private static final Color TEXT_DARK = new Color(45, 30, 20);
+    private static final Color ACCENT_GOLD = new Color(210, 170, 90);
     private static final Color BORDER_BROWN = new Color(120, 90, 60);
 
     // -------- scalable piece icon --------
+    /**
+     * Custom Icon implementation that renders a scalable circle with fill and
+     * outline.
+     * Used for drawing player pieces on the board buttons.
+     */
     private static class CircleIcon implements Icon {
         private final int size;
         private final Color fill;
@@ -54,8 +68,15 @@ public class Connect5GUI {
             this.stroke = stroke;
         }
 
-        @Override public int getIconWidth() { return size; }
-        @Override public int getIconHeight() { return size; }
+        @Override
+        public int getIconWidth() {
+            return size;
+        }
+
+        @Override
+        public int getIconHeight() {
+            return size;
+        }
 
         @Override
         public void paintIcon(Component c, Graphics g, int x, int y) {
@@ -78,28 +99,47 @@ public class Connect5GUI {
     }
 
     private static String colorName(char sym) {
-        if (sym == BLACK) return "Black";
-        if (sym == WHITE) return "White";
-        if (sym == BLUE)  return "Blue";
-        if (sym == GREEN) return "Green";
-        if (sym == RED)   return "Red";
+        if (sym == BLACK)
+            return "Black";
+        if (sym == WHITE)
+            return "White";
+        if (sym == BLUE)
+            return "Blue";
+        if (sym == GREEN)
+            return "Green";
+        if (sym == RED)
+            return "Red";
         return "Unknown";
     }
 
-    // Build icon dynamically based on current button size (so it scales)
+    /**
+     * Generates a scalable piece icon for a given symbol and pixel size.
+     *
+     * @param sym The player symbol (B, W, U, G, R)
+     * @param px  The diameter of the icon in pixels
+     * @return An Icon instance representing the piece
+     */
     private static Icon iconFor(char sym, int px) {
         int size = Math.max(12, px);
-        if (sym == BLACK) return new CircleIcon(size, Color.BLACK, null, 0f);
-        if (sym == WHITE) return new CircleIcon(size, Color.WHITE, Color.BLACK, Math.max(1f, size / 16f));
-        if (sym == BLUE)  return new CircleIcon(size, new Color(30, 90, 210), Color.BLACK, Math.max(1f, size / 18f));
-        if (sym == GREEN) return new CircleIcon(size, new Color(30, 160, 80), Color.BLACK, Math.max(1f, size / 18f));
-        if (sym == RED)   return new CircleIcon(size, new Color(210, 50, 50), Color.BLACK, Math.max(1f, size / 18f));
+        if (sym == BLACK)
+            return new CircleIcon(size, Color.BLACK, null, 0f);
+        if (sym == WHITE)
+            return new CircleIcon(size, Color.WHITE, Color.BLACK, Math.max(1f, size / 16f));
+        if (sym == BLUE)
+            return new CircleIcon(size, new Color(30, 90, 210), Color.BLACK, Math.max(1f, size / 18f));
+        if (sym == GREEN)
+            return new CircleIcon(size, new Color(30, 160, 80), Color.BLACK, Math.max(1f, size / 18f));
+        if (sym == RED)
+            return new CircleIcon(size, new Color(210, 50, 50), Color.BLACK, Math.max(1f, size / 18f));
         return null;
     }
 
     // =========================
     // Player (UML-aligned)
     // =========================
+    /**
+     * Represents a human player with a name, assigned symbol, and piece tracking.
+     */
     static class Player {
         String name;
         char symbol;
@@ -111,198 +151,399 @@ public class Connect5GUI {
             this.piecesPlaced = 0;
         }
 
-        public void makeMove(Board board, String phase) { }
+        public void makeMove(Board board, String phase) {
+        }
     }
 
     // =========================
     // AIPlayer (UML-aligned)
     // =========================
+    /**
+     * Represents an AI player capable of determining moves using heuristics and
+     * Minimax/Alpha-Beta pruning.
+     */
     static class AIPlayer extends Player {
         String difficulty;
         private final Random rand = new Random();
+        private static final long TIME_LIMIT_MS = 9500; // 9.5 seconds safety buffer
 
         AIPlayer(String name, char symbol, String difficulty) {
             super(name, symbol);
             this.difficulty = difficulty;
         }
 
-        @Override public void makeMove(Board board, String phase) { }
-        public void chooseMove(Board board) { }
+        @Override
+        public void makeMove(Board board, String phase) {
+        }
+
+        public void chooseMove(Board board) {
+        }
 
         static class Move {
             boolean placement;
             int fromC, fromR;
             int toC, toR;
 
-            Move(int toC, int toR) { placement = true; this.toC = toC; this.toR = toR; }
+            Move(int toC, int toR) {
+                placement = true;
+                this.toC = toC;
+                this.toR = toR;
+            }
+
             Move(int fromC, int fromR, int toC, int toR) {
                 placement = false;
-                this.fromC = fromC; this.fromR = fromR;
-                this.toC = toC; this.toR = toR;
+                this.fromC = fromC;
+                this.fromR = fromR;
+                this.toC = toC;
+                this.toR = toR;
             }
         }
 
+        // Exception to break recursion on timeout
+        private static class TimeoutException extends RuntimeException {
+        }
+
+        /**
+         * Determines the best move for the AI based on the current game state and
+         * difficulty level.
+         *
+         * @param game The current game instance
+         * @return The calculated best Move
+         */
         Move pickMove(Game game) {
             String d = (difficulty == null) ? "BEGINNER" : difficulty.toUpperCase();
 
-            ArrayList<Move> moves = generateMoves(game, this.symbol);
-            if (moves.isEmpty()) return null;
+            ArrayList<Move> moves = generateMoves(game, game.board.grid, this.symbol, game.gamePhase);
+            if (moves.isEmpty())
+                return null;
 
+            // 1) Immediate win check (FAST)
             Move win = findWinningMove(game, this.symbol);
-            if (win != null) return win;
+            if (win != null)
+                return win;
 
+            // 2) Immediate block check (MEDIUM/SMART)
             if (!"BEGINNER".equals(d)) {
                 Move block = findBestBlockAnyOpponent(game, this.symbol);
-                if (block != null) return block;
+                if (block != null)
+                    return block;
             }
 
-            if ("BEGINNER".equals(d)) return moves.get(rand.nextInt(moves.size()));
-            if ("MEDIUM".equals(d)) return pickBestHeuristic(game, this.symbol, moves);
+            // 3) Difficulty logic
+            if ("BEGINNER".equals(d))
+                return moves.get(rand.nextInt(moves.size()));
+            if ("MEDIUM".equals(d))
+                return pickBestHeuristic(game, this.symbol, moves);
 
-            return pickTwoPlyVsNext(game, this.symbol, moves);
+            // SMART: Iterative Deepening with Time Control
+            return pickIterativeDeepening(game, this.symbol, moves);
         }
 
-        private ArrayList<Move> generateMoves(Game game, char sym) {
-            ArrayList<Move> list = new ArrayList<>();
-            Player p = game.getPlayerBySymbol(sym);
-            if (p == null) return list;
+        private Move pickIterativeDeepening(Game game, char me, ArrayList<Move> moves) {
+            long startTime = System.currentTimeMillis();
+            long endTime = startTime + TIME_LIMIT_MS;
 
-            if ("PLACEMENT".equals(game.gamePhase)) {
-                if (p.piecesPlaced >= game.maxPieces) return list;
-                for (int r = 0; r < 8; r++) for (int c = 0; c < 8; c++)
-                    if (game.board.grid[r][c] == EMPTY) list.add(new Move(c, r));
-            } else {
-                for (int r = 0; r < 8; r++) for (int c = 0; c < 8; c++) {
-                    if (game.board.grid[r][c] != sym) continue;
-                    for (int dr = -1; dr <= 1; dr++) for (int dc = -1; dc <= 1; dc++) {
-                        if (dr == 0 && dc == 0) continue;
-                        int nr = r + dr, nc = c + dc;
-                        if (nc < 0 || nc >= 8 || nr < 0 || nr >= 8) continue;
-                        if (game.board.grid[nr][nc] == EMPTY) list.add(new Move(c, r, nc, nr));
+            Move bestMove = moves.get(0);
+            // In placement, huge branching factor, so max depth around 6-8 is good.
+            // In movement, we can go deeper potentially.
+            int maxDepthRaw = ("PLACEMENT".equals(game.gamePhase)) ? 10 : 12;
+
+            // Initial sort with shallow heuristic
+            ArrayList<Move> ordered = orderAndCapMoves(game, game.board.grid, moves, me, me, game.gamePhase, true);
+
+            try {
+                // Iterative Deepening: Depth 1, 2, 3...
+                for (int depth = 1; depth <= maxDepthRaw; depth++) {
+                    // Check time before starting a new depth
+                    if (System.currentTimeMillis() >= endTime)
+                        break;
+
+                    Move currentBest = null;
+                    int bestVal = Integer.MIN_VALUE;
+
+                    // Root level of Alpha-Beta
+                    for (Move m : ordered) {
+                        if (System.currentTimeMillis() >= endTime)
+                            throw new TimeoutException();
+
+                        char[][] g2 = copyGrid(game.board.grid);
+                        applyMove(g2, m, me);
+
+                        // If immediate win, take it
+                        if (winnerOnGrid(g2, game.connectTarget) == me)
+                            return m;
+
+                        int nextIndex = (game.currentPlayerIndex + 1) % game.players.length;
+                        int val = alphaBeta(game, g2, nextIndex, me, depth - 1,
+                                Integer.MIN_VALUE / 2, Integer.MAX_VALUE / 2, endTime);
+
+                        // Positional tie-breaker
+                        val += centerScore(m.toC, m.toR);
+
+                        if (val > bestVal) {
+                            bestVal = val;
+                            currentBest = m;
+                        }
+                    }
+
+                    if (currentBest != null) {
+                        bestMove = currentBest;
+                        // Optimization: Move best move to front for next iteration
+                        ordered.remove(bestMove);
+                        ordered.add(0, bestMove);
+                        // System.out.println("ID Depth " + depth + " best: " + bestVal);
                     }
                 }
+            } catch (TimeoutException e) {
+                // Time up, return best move found so far
+            }
+            return bestMove;
+        }
+
+        private int alphaBeta(Game game, char[][] grid, int playerIndex, char me, int depth, int alpha, int beta,
+                long endTime) {
+            if (System.currentTimeMillis() >= endTime)
+                throw new TimeoutException();
+
+            char winner = winnerOnGrid(grid, game.connectTarget);
+            if (winner != 0 || depth <= 0) {
+                return terminalScore(game, grid, me, winner, depth);
+            }
+
+            String phase = computePhase(game, grid);
+            char sym = game.players[playerIndex].symbol;
+
+            ArrayList<Move> moves = generateMoves(game, grid, sym, phase);
+            if (moves.isEmpty())
+                return evaluatePosition(game, grid, me);
+
+            boolean maximize = (sym == me);
+            ArrayList<Move> ordered = orderAndCapMoves(game, grid, moves, sym, me, phase, maximize);
+
+            int nextIndex = (playerIndex + 1) % game.players.length;
+
+            if (maximize) {
+                int best = Integer.MIN_VALUE / 2;
+                for (Move m : ordered) {
+                    char[][] g2 = copyGrid(grid);
+                    applyMove(g2, m, sym);
+                    int val = alphaBeta(game, g2, nextIndex, me, depth - 1, alpha, beta, endTime);
+                    best = Math.max(best, val);
+                    alpha = Math.max(alpha, best);
+                    if (beta <= alpha)
+                        break;
+                }
+                return best;
+            } else {
+                int best = Integer.MAX_VALUE / 2;
+                for (Move m : ordered) {
+                    char[][] g2 = copyGrid(grid);
+                    applyMove(g2, m, sym);
+                    int val = alphaBeta(game, g2, nextIndex, me, depth - 1, alpha, beta, endTime);
+                    best = Math.min(best, val);
+                    beta = Math.min(beta, best);
+                    if (beta <= alpha)
+                        break;
+                }
+                return best;
+            }
+        }
+
+        // -----------------------------
+        // Move generation
+        // -----------------------------
+        private ArrayList<Move> generateMoves(Game game, char[][] grid, char sym, String phase) {
+            ArrayList<Move> list = new ArrayList<>();
+            boolean placementPhase = "PLACEMENT".equals(phase);
+            if (placementPhase) {
+                int placed = countPieces(grid, sym);
+                if (placed >= game.maxPieces)
+                    return list;
+                for (int r = 0; r < 8; r++)
+                    for (int c = 0; c < 8; c++)
+                        if (grid[r][c] == EMPTY)
+                            list.add(new Move(c, r));
+            } else {
+                for (int r = 0; r < 8; r++)
+                    for (int c = 0; c < 8; c++) {
+                        if (grid[r][c] != sym)
+                            continue;
+                        for (int dr = -1; dr <= 1; dr++)
+                            for (int dc = -1; dc <= 1; dc++) {
+                                if (dr == 0 && dc == 0)
+                                    continue;
+                                int nr = r + dr, nc = c + dc;
+                                if (nc < 0 || nc >= 8 || nr < 0 || nr >= 8)
+                                    continue;
+                                if (grid[nr][nc] == EMPTY)
+                                    list.add(new Move(c, r, nc, nr));
+                            }
+                    }
             }
             return list;
         }
 
-        private ArrayList<Move> generateMovesOnGrid(Game game, char[][] grid, char sym) {
-            ArrayList<Move> list = new ArrayList<>();
-            Player p = game.getPlayerBySymbol(sym);
-            if (p == null) return list;
-
-            if ("PLACEMENT".equals(game.gamePhase)) {
-                if (p.piecesPlaced >= game.maxPieces) return list;
-                for (int r = 0; r < 8; r++) for (int c = 0; c < 8; c++)
-                    if (grid[r][c] == EMPTY) list.add(new Move(c, r));
-            } else {
-                for (int r = 0; r < 8; r++) for (int c = 0; c < 8; c++) {
-                    if (grid[r][c] != sym) continue;
-                    for (int dr = -1; dr <= 1; dr++) for (int dc = -1; dc <= 1; dc++) {
-                        if (dr == 0 && dc == 0) continue;
-                        int nr = r + dr, nc = c + dc;
-                        if (nc < 0 || nc >= 8 || nr < 0 || nr >= 8) continue;
-                        if (grid[nr][nc] == EMPTY) list.add(new Move(c, r, nc, nr));
-                    }
-                }
+        private String computePhase(Game game, char[][] grid) {
+            for (Player p : game.players) {
+                if (countPieces(grid, p.symbol) < game.maxPieces)
+                    return "PLACEMENT";
             }
-            return list;
+            return "MOVEMENT";
         }
 
+        private int countPieces(char[][] grid, char sym) {
+            int count = 0;
+            for (int r = 0; r < 8; r++)
+                for (int c = 0; c < 8; c++)
+                    if (grid[r][c] == sym)
+                        count++;
+            return count;
+        }
+
+        // -----------------------------
+        // Tactics: win / block
+        // -----------------------------
         private Move findWinningMove(Game game, char sym) {
-            ArrayList<Move> moves = generateMoves(game, sym);
+            ArrayList<Move> moves = generateMoves(game, game.board.grid, sym, game.gamePhase);
             for (Move m : moves) {
                 char[][] g2 = copyGrid(game.board.grid);
                 applyMove(g2, m, sym);
-                if (winnerOnGrid(g2, game.connectTarget) == sym) return m;
+                if (winnerOnGrid(g2, game.connectTarget) == sym)
+                    return m;
             }
             return null;
         }
 
         private Move findBestBlockAnyOpponent(Game game, char me) {
             ArrayList<Character> oppSyms = new ArrayList<>();
-            for (Player p : game.players) if (p.symbol != me) oppSyms.add(p.symbol);
+            for (Player p : game.players)
+                if (p.symbol != me)
+                    oppSyms.add(p.symbol);
 
             boolean threat = false;
             for (char opp : oppSyms) {
-                ArrayList<Move> omoves = generateMoves(game, opp);
+                ArrayList<Move> omoves = generateMoves(game, game.board.grid, opp, game.gamePhase);
                 for (Move om : omoves) {
                     char[][] g2 = copyGrid(game.board.grid);
                     applyMove(g2, om, opp);
-                    if (winnerOnGrid(g2, game.connectTarget) == opp) { threat = true; break; }
+                    if (winnerOnGrid(g2, game.connectTarget) == opp) {
+                        threat = true;
+                        break;
+                    }
                 }
-                if (threat) break;
+                if (threat)
+                    break;
             }
-            if (!threat) return null;
+            if (!threat)
+                return null;
 
-            ArrayList<Move> myMoves = generateMoves(game, me);
+            ArrayList<Move> myMoves = generateMoves(game, game.board.grid, me, game.gamePhase);
             Move best = null;
             int bestThreats = Integer.MAX_VALUE;
 
             for (Move mm : myMoves) {
                 char[][] g2 = copyGrid(game.board.grid);
                 applyMove(g2, mm, me);
+                String phase2 = computePhase(game, g2);
 
                 int threats = 0;
                 for (char opp : oppSyms) {
-                    ArrayList<Move> omoves = generateMovesOnGrid(game, g2, opp);
+                    ArrayList<Move> omoves = generateMoves(game, g2, opp, phase2);
                     for (Move om : omoves) {
                         char[][] g3 = copyGrid(g2);
                         applyMove(g3, om, opp);
-                        if (winnerOnGrid(g3, game.connectTarget) == opp) threats++;
+                        if (winnerOnGrid(g3, game.connectTarget) == opp)
+                            threats++;
                     }
                 }
-
                 if (threats < bestThreats) {
                     bestThreats = threats;
                     best = mm;
-                    if (bestThreats == 0) break;
+                    if (bestThreats == 0)
+                        break;
                 }
             }
             return best;
         }
 
+        // -----------------------------
+        // Scan Helpers
+        // -----------------------------
         private Move pickBestHeuristic(Game game, char me, ArrayList<Move> moves) {
             Move best = null;
             int bestScore = Integer.MIN_VALUE;
             for (Move m : moves) {
                 char[][] g2 = copyGrid(game.board.grid);
                 applyMove(g2, m, me);
-                int score = heuristic(game, g2, me) + centerScore(m.toC, m.toR);
-                if (score > bestScore) { bestScore = score; best = m; }
+                int score = evaluatePosition(game, g2, me) + centerScore(m.toC, m.toR);
+                if (score > bestScore) {
+                    bestScore = score;
+                    best = m;
+                }
             }
             return (best != null) ? best : moves.get(rand.nextInt(moves.size()));
         }
 
-        private Move pickTwoPlyVsNext(Game game, char me, ArrayList<Move> moves) {
-            char next = game.nextPlayerSymbol();
-            Move best = null;
-            int bestVal = Integer.MIN_VALUE;
+        private int terminalScore(Game game, char[][] grid, char me, char winner, int depthRemaining) {
+            if (winner == me)
+                return 1_000_000_000 - (100 * (100 - depthRemaining));
+            if (winner != 0)
+                return -1_000_000_000 + (100 * (100 - depthRemaining));
+            return evaluatePosition(game, grid, me);
+        }
 
-            for (Move m : moves) {
-                char[][] g2 = copyGrid(game.board.grid);
-                applyMove(g2, m, me);
+        private ArrayList<Move> orderAndCapMoves(Game game, char[][] grid, ArrayList<Move> moves,
+                char mover, char me, String phase, boolean maximize) {
+            int cap = "PLACEMENT".equals(phase) ? 14 : 28;
+            class Scored {
+                Move m;
+                int s;
 
-                if (winnerOnGrid(g2, game.connectTarget) == me) return m;
-
-                ArrayList<Move> nextMoves = generateMovesOnGrid(game, g2, next);
-                int worst = Integer.MAX_VALUE;
-
-                if (nextMoves.isEmpty()) worst = heuristic(game, g2, me);
-                else {
-                    for (Move nm : nextMoves) {
-                        char[][] g3 = copyGrid(g2);
-                        applyMove(g3, nm, next);
-                        if (winnerOnGrid(g3, game.connectTarget) == next) worst = Math.min(worst, -1_000_000);
-                        else worst = Math.min(worst, heuristic(game, g3, me));
-                    }
+                Scored(Move m, int s) {
+                    this.m = m;
+                    this.s = s;
                 }
-
-                if (worst > bestVal) { bestVal = worst; best = m; }
             }
-            return (best != null) ? best : moves.get(rand.nextInt(moves.size()));
+            ArrayList<Scored> scored = new ArrayList<>();
+            for (Move m : moves) {
+                char[][] g2 = copyGrid(grid);
+                applyMove(g2, m, mover);
+                int s = evaluatePosition(game, g2, me);
+                if (mover == me)
+                    s += centerScore(m.toC, m.toR);
+                scored.add(new Scored(m, s));
+            }
+            scored.sort((a, b) -> maximize ? Integer.compare(b.s, a.s) : Integer.compare(a.s, b.s));
+            ArrayList<Move> out = new ArrayList<>();
+            int limit = Math.min(cap, scored.size());
+            for (int i = 0; i < limit; i++)
+                out.add(scored.get(i).m);
+            return out;
+        }
+
+        // -----------------------------
+        // Evaluation / heuristic
+        // -----------------------------
+        private int evaluatePosition(Game game, char[][] grid, char me) {
+            // Heuristic score: My Score - (Opponent Max Score * 0.9)
+            // We want to be aggressive but also respect enemy threats.
+
+            // Calculate my potential
+            int myScore = heuristic(game, grid, me);
+
+            // Calculate opponent potentials
+            int oppMax = 0;
+            for (Player p : game.players) {
+                if (p.symbol == me)
+                    continue;
+                oppMax = Math.max(oppMax, heuristic(game, grid, p.symbol));
+            }
+
+            return myScore - (int) (0.9 * oppMax);
         }
 
         private int centerScore(int c, int r) {
+            // Favor center (3,3)-(4,4)
             int dc = Math.abs(c - 3) + Math.abs(c - 4);
             int dr = Math.abs(r - 3) + Math.abs(r - 4);
             return 50 - (dc + dr) * 5;
@@ -312,50 +553,136 @@ public class Connect5GUI {
             int score = 0;
             int n = game.connectTarget;
 
-            for (int r = 0; r < 8; r++) for (int c = 0; c <= 8 - n; c++) score += windowScore(grid, r, c, 0, 1, me, n);
-            for (int c = 0; c < 8; c++) for (int r = 0; r <= 8 - n; r++) score += windowScore(grid, r, c, 1, 0, me, n);
-            for (int r = 0; r <= 8 - n; r++) for (int c = 0; c <= 8 - n; c++) score += windowScore(grid, r, c, 1, 1, me, n);
-            for (int r = n - 1; r < 8; r++) for (int c = 0; c <= 8 - n; c++) score += windowScore(grid, r, c, -1, 1, me, n);
+            // Scanning windows of length 5 (target)
+            // For each direction, check windows
+            for (int r = 0; r < 8; r++)
+                for (int c = 0; c <= 8 - n; c++)
+                    score += windowScore(grid, r, c, 0, 1, me, n);
+            for (int c = 0; c < 8; c++)
+                for (int r = 0; r <= 8 - n; r++)
+                    score += windowScore(grid, r, c, 1, 0, me, n);
+            for (int r = 0; r <= 8 - n; r++)
+                for (int c = 0; c <= 8 - n; c++)
+                    score += windowScore(grid, r, c, 1, 1, me, n);
+            for (int r = n - 1; r < 8; r++)
+                for (int c = 0; c <= 8 - n; c++)
+                    score += windowScore(grid, r, c, -1, 1, me, n);
 
             score += centerControl(grid, me) * 4;
             return score;
         }
 
+        // IMPROVED WINDOW EVALUATION
+        // Distinguishes between OPEN (Live) lines and CLOSED (Dead) lines
         private int windowScore(char[][] grid, int r0, int c0, int dr, int dc, char me, int len) {
-            int meCount = 0, otherCount = 0;
+            int meCount = 0;
+            int oppCount = 0;
+            int emptyCount = 0;
+
             for (int i = 0; i < len; i++) {
                 char v = grid[r0 + dr * i][c0 + dc * i];
-                if (v == me) meCount++;
-                else if (v != EMPTY) otherCount++;
+                if (v == me)
+                    meCount++;
+                else if (v != EMPTY)
+                    oppCount++;
+                else
+                    emptyCount++;
             }
-            if (meCount > 0 && otherCount > 0) return 0;
 
-            if (meCount == 5) return 1_000_000;
-            if (meCount == 4 && otherCount == 0) return 8000;
-            if (meCount == 3 && otherCount == 0) return 900;
-            if (meCount == 2 && otherCount == 0) return 120;
-            if (meCount == 1 && otherCount == 0) return 15;
+            // If mixed with opponent pieces, it's blocked (useless for me)
+            if (meCount > 0 && oppCount > 0)
+                return 0;
 
-            if (meCount == 0 && otherCount == 0) return 1;
-            if (meCount == 0 && otherCount > 0) return -otherCount * 10;
-            return 0;
+            // If only opponent pieces (and empty), negative score?
+            // The heuristic function calls this for "me" and "opp" separately,
+            // so here we only yield positive points for "me" presence.
+            if (meCount == 0)
+                return 0; // Purely empty or purely opponent is handled when we evaluate opponent
+
+            // Determine if the line is OPEN (both ends empty/available) or CLOSED (one end
+            // blocked)
+            // We need to look at the cells immediately before and after the window, if they
+            // exist.
+            boolean openStart = false;
+            boolean openEnd = false;
+
+            int rStart = r0 - dr;
+            int cStart = c0 - dc;
+            if (rStart >= 0 && rStart < 8 && cStart >= 0 && cStart < 8) {
+                if (grid[rStart][cStart] == EMPTY)
+                    openStart = true;
+            }
+
+            int rEnd = r0 + dr * len;
+            int cEnd = c0 + dc * len;
+            if (rEnd >= 0 && rEnd < 8 && cEnd >= 0 && cEnd < 8) {
+                if (grid[rEnd][cEnd] == EMPTY)
+                    openEnd = true;
+            }
+
+            // Scoring Weights
+            if (meCount == 5)
+                return 1_000_000; // WIN
+
+            if (meCount == 4) {
+                if (openStart && openEnd)
+                    return 900_000; // OPEN 4: Unstoppable
+                if (openStart || openEnd)
+                    return 50_000; // CLOSED 4: Must block
+                return 1000; // Dead 4 (blocked both ends, but technically 5 pieces fit in window? No, window
+                             // is 5.)
+                // Actually if window is size 5 and we have 4, there is 1 empty spot INSIDE.
+                // So it's not fully blocked. "Open/Closed" refers to external growth potential
+                // but for Connect 5, an empty spot inside IS the growth potential.
+                // Re-think: "Open 4" usually means .XXXX. which is 6 slots.
+                // Here we evaluate a 5-slot window.
+                // If 4 pieces + 1 empty in a 5-slot window, that IS a potential win.
+                // We don't need external checks as much as internal checks.
+            }
+
+            // Standard Connect-4/5 logic usually looks at larger patterns,
+            // but fixed window-5 is simple.
+            // Let's stick to the prompt's request: ".XXX." vs "OXXX."
+            // That implies checking OUTSIDE the window.
+            // My openStart/openEnd checks do exactly that.
+
+            if (meCount == 3) {
+                // XXX.. or .XXX. or ..XXX inside the window
+                if (openStart && openEnd)
+                    return 50_000; // OPEN 3 (.XXX.) -> Very dangerous
+                if (openStart || openEnd)
+                    return 1000; // CLOSED 3 (OXXX.) -> Manageable
+                return 100; // Blocked 3
+            }
+
+            if (meCount == 2) {
+                if (openStart && openEnd)
+                    return 500;
+                return 50;
+            }
+
+            return 10;
         }
 
         private int centerControl(char[][] grid, char sym) {
             int count = 0;
-            for (int r = 2; r <= 5; r++) for (int c = 2; c <= 5; c++)
-                if (grid[r][c] == sym) count++;
+            for (int r = 2; r <= 5; r++)
+                for (int c = 2; c <= 5; c++)
+                    if (grid[r][c] == sym)
+                        count++;
             return count;
         }
 
         private char[][] copyGrid(char[][] src) {
             char[][] dst = new char[8][8];
-            for (int r = 0; r < 8; r++) System.arraycopy(src[r], 0, dst[r], 0, 8);
+            for (int r = 0; r < 8; r++)
+                System.arraycopy(src[r], 0, dst[r], 0, 8);
             return dst;
         }
 
         private void applyMove(char[][] grid, Move m, char sym) {
-            if (m.placement) grid[m.toR][m.toC] = sym;
+            if (m.placement)
+                grid[m.toR][m.toC] = sym;
             else {
                 grid[m.fromR][m.fromC] = EMPTY;
                 grid[m.toR][m.toC] = sym;
@@ -364,23 +691,25 @@ public class Connect5GUI {
 
         private char winnerOnGrid(char[][] grid, int connectTarget) {
             int n = connectTarget;
-            int[][] dirs = new int[][]{{1,0},{0,1},{1,1},{1,-1}};
-
-            for (int r = 0; r < 8; r++) for (int c = 0; c < 8; c++) {
-                char s = grid[r][c];
-                if (s == EMPTY) continue;
-
-                for (int[] d : dirs) {
-                    int dc = d[0], dr = d[1];
-                    int count = 1;
-                    int nc = c + dc, nr = r + dr;
-                    while (nc >= 0 && nc < 8 && nr >= 0 && nr < 8 && grid[nr][nc] == s) {
-                        count++;
-                        if (count >= n) return s;
-                        nc += dc; nr += dr;
+            int[][] dirs = new int[][] { { 1, 0 }, { 0, 1 }, { 1, 1 }, { 1, -1 } };
+            for (int r = 0; r < 8; r++)
+                for (int c = 0; c < 8; c++) {
+                    char s = grid[r][c];
+                    if (s == EMPTY)
+                        continue;
+                    for (int[] d : dirs) {
+                        int dc = d[0], dr = d[1];
+                        int count = 1;
+                        int nc = c + dc, nr = r + dr;
+                        while (nc >= 0 && nc < 8 && nr >= 0 && nr < 8 && grid[nr][nc] == s) {
+                            count++;
+                            if (count >= n)
+                                return s;
+                            nc += dc;
+                            nr += dr;
+                        }
                     }
                 }
-            }
             return 0;
         }
     }
@@ -388,31 +717,44 @@ public class Connect5GUI {
     // =========================
     // Board
     // =========================
+    /**
+     * Represents the 8x8 game board grid.
+     * Handles placement and movement validation logic.
+     */
     static class Board {
         char[][] grid = new char[8][8];
 
         public void initializeBoard() {
-            for (int r = 0; r < 8; r++) for (int c = 0; c < 8; c++) grid[r][c] = EMPTY;
+            for (int r = 0; r < 8; r++)
+                for (int c = 0; c < 8; c++)
+                    grid[r][c] = EMPTY;
         }
 
         public boolean placePiece(int[] pos, char symbol) {
             int c = pos[0], r = pos[1];
-            if (c < 0 || c >= 8 || r < 0 || r >= 8) return false;
-            if (grid[r][c] != EMPTY) return false;
+            if (c < 0 || c >= 8 || r < 0 || r >= 8)
+                return false;
+            if (grid[r][c] != EMPTY)
+                return false;
             grid[r][c] = symbol;
             return true;
         }
 
         public boolean movePiece(int[] from, int[] to, char symbol) {
             int fc = from[0], fr = from[1], tc = to[0], tr = to[1];
-            if (fc < 0 || fc >= 8 || fr < 0 || fr >= 8) return false;
-            if (tc < 0 || tc >= 8 || tr < 0 || tr >= 8) return false;
-            if (grid[fr][fc] != symbol) return false;
-            if (grid[tr][tc] != EMPTY) return false;
+            if (fc < 0 || fc >= 8 || fr < 0 || fr >= 8)
+                return false;
+            if (tc < 0 || tc >= 8 || tr < 0 || tr >= 8)
+                return false;
+            if (grid[fr][fc] != symbol)
+                return false;
+            if (grid[tr][tc] != EMPTY)
+                return false;
 
             int dc = Math.abs(tc - fc);
             int dr = Math.abs(tr - fr);
-            if (dc > 1 || dr > 1 || (dc == 0 && dr == 0)) return false;
+            if (dc > 1 || dr > 1 || (dc == 0 && dr == 0))
+                return false;
 
             grid[fr][fc] = EMPTY;
             grid[tr][tc] = symbol;
@@ -424,32 +766,40 @@ public class Connect5GUI {
             sb.append("    A B C D E F G H\n");
             for (int displayRow = 7; displayRow >= 0; displayRow--) {
                 sb.append(String.format("%2d  ", displayRow + 1));
-                for (int c = 0; c < 8; c++) sb.append(grid[displayRow][c]).append(' ');
+                for (int c = 0; c < 8; c++)
+                    sb.append(grid[displayRow][c]).append(' ');
                 sb.append('\n');
             }
             return sb.toString();
         }
 
         public static String posToLabel(int c, int r) {
-            return "" + (char)('A' + c) + (r + 1);
+            return "" + (char) ('A' + c) + (r + 1);
         }
     }
 
     // =========================
     // Logger
     // =========================
+    /**
+     * Handles writing game events and board states to a text file log.
+     */
     static class Logger {
         String fileName;
         private PrintWriter out;
 
-        Logger(String fileName) { this.fileName = fileName; }
+        Logger(String fileName) {
+            this.fileName = fileName;
+        }
 
         public void writeToFile(String text) {
             try {
-                if (out == null) out = new PrintWriter(new FileWriter(fileName, true));
+                if (out == null)
+                    out = new PrintWriter(new FileWriter(fileName, true));
                 out.println(text);
                 out.flush();
-            } catch (IOException ignored) { }
+            } catch (IOException ignored) {
+            }
         }
 
         public void closeFile() {
@@ -464,6 +814,11 @@ public class Connect5GUI {
     // =========================
     // Game
     // =========================
+    /**
+     * Manages the core game state, including turn management, phase transitions
+     * (Placement vs Movement),
+     * and victory conditions.
+     */
     static class Game {
         Board board;
         Player[] players;
@@ -496,10 +851,14 @@ public class Connect5GUI {
             this.winner = null;
         }
 
-        public Player currentPlayer() { return players[currentPlayerIndex]; }
+        public Player currentPlayer() {
+            return players[currentPlayerIndex];
+        }
 
         public Player getPlayerBySymbol(char sym) {
-            for (Player p : players) if (p.symbol == sym) return p;
+            for (Player p : players)
+                if (p.symbol == sym)
+                    return p;
             return null;
         }
 
@@ -508,10 +867,14 @@ public class Connect5GUI {
             return players[nxt].symbol;
         }
 
-        public int[] getSelectedFrom() { return selectedFrom; }
+        public int[] getSelectedFrom() {
+            return selectedFrom;
+        }
 
         private boolean allPlayersPlaced() {
-            for (Player p : players) if (p.piecesPlaced < maxPieces) return false;
+            for (Player p : players)
+                if (p.piecesPlaced < maxPieces)
+                    return false;
             return true;
         }
 
@@ -522,9 +885,12 @@ public class Connect5GUI {
         }
 
         public String offerOrAcceptDraw() {
-            if (!drawAvailable()) return "Draw is only available in Level 1 (2  players).";
-            if (winner != null) return "Game is already over.";
-            if (draw) return "Game is already a draw.";
+            if (!drawAvailable())
+                return "Draw is only available in Level 1 (2  players).";
+            if (winner != null)
+                return "Game is already over.";
+            if (draw)
+                return "Game is already a draw.";
 
             if (drawOfferFrom == null) {
                 drawOfferFrom = currentPlayerIndex;
@@ -543,22 +909,30 @@ public class Connect5GUI {
 
         public void checkWinner() {
             char w = findWinnerSymbol();
-            if (w == 0) winner = null;
+            if (w == 0)
+                winner = null;
             else {
-                for (Player p : players) if (p.symbol == w) { winner = p; return; }
+                for (Player p : players)
+                    if (p.symbol == w) {
+                        winner = p;
+                        return;
+                    }
                 winner = null;
             }
         }
 
         public boolean isGameOver() {
             checkWinner();
-            if (winner != null) return true;
-            if (draw) return true;
+            if (winner != null)
+                return true;
+            if (draw)
+                return true;
             return turnCount >= 300;
         }
 
         public boolean isDraw() {
-            if (draw) return true;
+            if (draw)
+                return true;
             return (winner == null && turnCount >= 300);
         }
 
@@ -568,30 +942,36 @@ public class Connect5GUI {
         }
 
         public String handleClick(int c, int r) {
-            if (isGameOver()) return "Game is over.";
+            if (isGameOver())
+                return "Game is over.";
 
-            if (drawAvailable() && drawOfferFrom != null && drawOfferFrom != currentPlayerIndex) drawOfferFrom = null;
+            if (drawAvailable() && drawOfferFrom != null && drawOfferFrom != currentPlayerIndex)
+                drawOfferFrom = null;
 
             Player p = currentPlayer();
             String desc;
 
             if ("PLACEMENT".equals(gamePhase)) {
-                if (p.piecesPlaced >= maxPieces) return "No pieces left to place. Wait for movement phase.";
-                boolean ok = board.placePiece(new int[]{c, r}, p.symbol);
-                if (!ok) return "Invalid placement. Choose an empty square.";
+                if (p.piecesPlaced >= maxPieces)
+                    return "No pieces left to place. Wait for movement phase.";
+                boolean ok = board.placePiece(new int[] { c, r }, p.symbol);
+                if (!ok)
+                    return "Invalid placement. Choose an empty square.";
 
                 p.piecesPlaced++;
                 desc = p.name + " PLACE " + Board.posToLabel(c, r);
 
-                if (allPlayersPlaced()) gamePhase = "MOVEMENT";
+                if (allPlayersPlaced())
+                    gamePhase = "MOVEMENT";
 
                 logTurn(desc);
                 advanceTurn();
                 return desc;
             } else {
                 if (selectedFrom == null) {
-                    if (board.grid[r][c] != p.symbol) return "Select one of your own pieces to move.";
-                    selectedFrom = new int[]{c, r};
+                    if (board.grid[r][c] != p.symbol)
+                        return "Select one of your own pieces to move.";
+                    selectedFrom = new int[] { c, r };
                     return "Selected " + Board.posToLabel(c, r) + " to move.";
                 } else {
                     int fromC = selectedFrom[0], fromR = selectedFrom[1];
@@ -601,8 +981,9 @@ public class Connect5GUI {
                         return "Selection cleared.";
                     }
 
-                    boolean ok = board.movePiece(new int[]{fromC, fromR}, new int[]{c, r}, p.symbol);
-                    if (!ok) return "Invalid move. Move 1 square to an adjacent empty space.";
+                    boolean ok = board.movePiece(new int[] { fromC, fromR }, new int[] { c, r }, p.symbol);
+                    if (!ok)
+                        return "Invalid move. Move 1 square to an adjacent empty space.";
 
                     desc = p.name + " MOVE " + Board.posToLabel(fromC, fromR) + " -> " + Board.posToLabel(c, r);
                     selectedFrom = null;
@@ -615,34 +996,42 @@ public class Connect5GUI {
         }
 
         public String performAITurn() {
-            if (isGameOver()) return "Game is over.";
-            if (!(currentPlayer() instanceof AIPlayer)) return "Not AI turn.";
+            if (isGameOver())
+                return "Game is over.";
+            if (!(currentPlayer() instanceof AIPlayer))
+                return "Not AI turn.";
 
-            if (drawAvailable() && drawOfferFrom != null && drawOfferFrom != currentPlayerIndex) drawOfferFrom = null;
+            if (drawAvailable() && drawOfferFrom != null && drawOfferFrom != currentPlayerIndex)
+                drawOfferFrom = null;
 
             AIPlayer ai = (AIPlayer) currentPlayer();
             AIPlayer.Move m = ai.pickMove(this);
-            if (m == null) return "AI has no valid moves.";
+            if (m == null)
+                return "AI has no valid moves.";
 
             String desc;
 
             if ("PLACEMENT".equals(this.gamePhase)) {
-                boolean ok = board.placePiece(new int[]{m.toC, m.toR}, ai.symbol);
-                if (!ok) return "AI attempted invalid placement (should not happen).";
+                boolean ok = board.placePiece(new int[] { m.toC, m.toR }, ai.symbol);
+                if (!ok)
+                    return "AI attempted invalid placement (should not happen).";
 
                 ai.piecesPlaced++;
                 desc = ai.name + " (AI) PLACE " + Board.posToLabel(m.toC, m.toR);
 
-                if (allPlayersPlaced()) this.gamePhase = "MOVEMENT";
+                if (allPlayersPlaced())
+                    this.gamePhase = "MOVEMENT";
 
                 logTurn(desc);
                 advanceTurn();
                 return desc;
             } else {
-                boolean ok = board.movePiece(new int[]{m.fromC, m.fromR}, new int[]{m.toC, m.toR}, ai.symbol);
-                if (!ok) return "AI attempted invalid move (should not happen).";
+                boolean ok = board.movePiece(new int[] { m.fromC, m.fromR }, new int[] { m.toC, m.toR }, ai.symbol);
+                if (!ok)
+                    return "AI attempted invalid move (should not happen).";
 
-                desc = ai.name + " (AI) MOVE " + Board.posToLabel(m.fromC, m.fromR) + " -> " + Board.posToLabel(m.toC, m.toR);
+                desc = ai.name + " (AI) MOVE " + Board.posToLabel(m.fromC, m.fromR) + " -> "
+                        + Board.posToLabel(m.toC, m.toR);
 
                 logTurn(desc);
                 advanceTurn();
@@ -652,46 +1041,59 @@ public class Connect5GUI {
 
         private void advanceTurn() {
             checkWinner();
-            if (winner != null) { logResult("RESULT: " + winner.name + " wins by connecting " + connectTarget + "!"); return; }
-            if (isDraw()) { logResult("RESULT: Draw."); return; }
+            if (winner != null) {
+                logResult("RESULT: " + winner.name + " wins by connecting " + connectTarget + "!");
+                return;
+            }
+            if (isDraw()) {
+                logResult("RESULT: Draw.");
+                return;
+            }
             switchPlayer();
             turnCount++;
         }
 
         private void logTurn(String desc) {
-            if (logger == null) return;
+            if (logger == null)
+                return;
             logger.writeToFile("Turn " + turnCount + ": " + desc);
             logger.writeToFile(board.toConsoleString());
         }
 
         private void logResult(String resultLine) {
-            if (logger == null) return;
+            if (logger == null)
+                return;
             logger.writeToFile("------------------------------------------------------------");
             logger.writeToFile(resultLine);
-            logger.writeToFile("Ended: " + LocalDateTime.now().withNano(0));
+            DateTimeFormatter fmt = DateTimeFormatter.ofPattern("yyyy-MM-dd hh:mm:ss a");
+            logger.writeToFile("Ended: " + LocalDateTime.now().format(fmt));
             logger.closeFile();
         }
 
         private char findWinnerSymbol() {
             int n = connectTarget;
-            int[][] dirs = new int[][]{{1,0},{0,1},{1,1},{1,-1}};
+            int[][] dirs = new int[][] { { 1, 0 }, { 0, 1 }, { 1, 1 }, { 1, -1 } };
 
-            for (int r = 0; r < 8; r++) for (int c = 0; c < 8; c++) {
-                char s = board.grid[r][c];
-                if (s == EMPTY) continue;
+            for (int r = 0; r < 8; r++)
+                for (int c = 0; c < 8; c++) {
+                    char s = board.grid[r][c];
+                    if (s == EMPTY)
+                        continue;
 
-                for (int[] d : dirs) {
-                    int dc = d[0], dr = d[1];
-                    int count = 1;
-                    int nc = c + dc, nr = r + dr;
+                    for (int[] d : dirs) {
+                        int dc = d[0], dr = d[1];
+                        int count = 1;
+                        int nc = c + dc, nr = r + dr;
 
-                    while (nc >= 0 && nc < 8 && nr >= 0 && nr < 8 && board.grid[nr][nc] == s) {
-                        count++;
-                        if (count >= n) return s;
-                        nc += dc; nr += dr;
+                        while (nc >= 0 && nc < 8 && nr >= 0 && nr < 8 && board.grid[nr][nc] == s) {
+                            count++;
+                            if (count >= n)
+                                return s;
+                            nc += dc;
+                            nr += dr;
+                        }
                     }
                 }
-            }
             return 0;
         }
     }
@@ -699,6 +1101,10 @@ public class Connect5GUI {
     // =========================
     // GUI
     // =========================
+    /**
+     * The main JFrame containing the application's UI components.
+     * Manages navigation between the Menu and the Game Board.
+     */
     public static class ConnectFrame extends JFrame {
 
         private final CardLayout cards = new CardLayout();
@@ -706,6 +1112,7 @@ public class Connect5GUI {
 
         private final MenuPanel menuPanel = new MenuPanel();
         private final GamePanel gamePanel = new GamePanel();
+        private final SpinPanel spinPanel = new SpinPanel();
 
         ConnectFrame() {
             setTitle("Connect 5 on 8x8 - Levels 1 to 3-4");
@@ -717,6 +1124,7 @@ public class Connect5GUI {
             root.setBackground(APP_BG);
             root.add(menuPanel, "MENU");
             root.add(gamePanel, "GAME");
+            root.add(spinPanel, "SPIN");
             setContentPane(root);
 
             cards.show(root, "MENU");
@@ -727,7 +1135,7 @@ public class Connect5GUI {
         }
 
         private static Character chooseBlackOrWhite(Component parent, String msgTitle, String msgText) {
-            Object[] opts = {"Black", "White"};
+            Object[] opts = { "Black", "White" };
             int choice = JOptionPane.showOptionDialog(
                     parent,
                     msgText,
@@ -736,136 +1144,256 @@ public class Connect5GUI {
                     JOptionPane.QUESTION_MESSAGE,
                     null,
                     opts,
-                    opts[0]
-            );
-            if (choice == JOptionPane.CLOSED_OPTION) return null;
+                    opts[0]);
+            if (choice == JOptionPane.CLOSED_OPTION)
+                return null;
             return (choice == 0) ? BLACK : WHITE;
         }
 
-        // ---------- General Spin Dialog (2-5 participants) ----------
-        private static class SpinDialogN extends JDialog {
-            private final JLabel info = new JLabel("Spinning to choose who goes first...", SwingConstants.CENTER);
+        public void showSpin(String[] labels, java.util.function.Consumer<Integer> onComplete) {
+            spinPanel.setup(labels, onComplete);
+            cards.show(root, "SPIN");
+        }
+
+        public void showMenu() {
+            cards.show(root, "MENU");
+        }
+
+        // ---------- Integrated Spin Panel (2-5 participants) ----------
+        /**
+         * Panel for the "Spin" mechanic to randomly determine which player goes first.
+         */
+        private static class SpinPanel extends JPanel {
+            private final JLabel info = new JLabel("Click a player to choose first, or press Spin Random.",
+                    SwingConstants.CENTER);
             private final Random rand = new Random();
-            private Integer result = null;
 
-            private final JPanel[] cards;
-            private final String[] labels;
-            private int current = 0;
+            private JPanel centerGrid;
+            private JPanel cardsPanel;
 
-            SpinDialogN(Frame owner, String title, String[] labels) {
-                super(owner, title, true);
-                this.labels = labels;
+            private JPanel[] cards;
+            private JButton[] pickButtons;
 
-                setDefaultCloseOperation(DISPOSE_ON_CLOSE);
+            private boolean spinning = false;
 
-                info.setBorder(new EmptyBorder(10, 12, 10, 12));
-                info.setFont(info.getFont().deriveFont(Font.BOLD, 13f));
+            // Callback for when selection is made: (index) -> void
+            private java.util.function.Consumer<Integer> onSelectionComplete;
+
+            SpinPanel() {
+                setLayout(new BorderLayout());
+                setBackground(APP_BG);
+
+                info.setBorder(new EmptyBorder(20, 20, 20, 20));
+                info.setFont(info.getFont().deriveFont(Font.BOLD, 18f));
+                info.setForeground(TEXT_LIGHT);
+
+                add(info, BorderLayout.NORTH);
+
+                cardsPanel = new JPanel(new GridBagLayout());
+                cardsPanel.setBackground(APP_BG);
+                add(cardsPanel, BorderLayout.CENTER);
+
+                JPanel bottom = new JPanel(new FlowLayout(FlowLayout.CENTER, 20, 20));
+                bottom.setBackground(APP_BG);
+
+                JButton spinBtn = new JButton("Spin Random");
+                styleButton(spinBtn);
+
+                JButton backBtn = new JButton("Back");
+                styleButton(backBtn);
+
+                backBtn.addActionListener(e -> {
+                    // Find parent ConnectFrame and switch to MENU
+                    Container p = getParent();
+                    while (p != null && !(p instanceof ConnectFrame))
+                        p = p.getParent();
+                    if (p != null)
+                        ((ConnectFrame) p).showMenu();
+                });
+
+                spinBtn.addActionListener(e -> runSpin(spinBtn));
+
+                bottom.add(spinBtn);
+                bottom.add(backBtn);
+                add(bottom, BorderLayout.SOUTH);
+            }
+
+            private void styleButton(JButton b) {
+                b.setPreferredSize(new Dimension(160, 44));
+                b.setFocusPainted(false);
+                b.setBackground(ACCENT_GOLD);
+                b.setForeground(TEXT_DARK);
+                b.setFont(b.getFont().deriveFont(Font.BOLD, 14f));
+            }
+
+            public void cleanUp() {
+                removeAll();
+                // Rebuild basic structure is harder, simpler to just 'reset' the internal
+                // content
+                // But for simplicity, we keep the frame and just swap the center content?
+                // Actually the 'centerGrid' is dynamic based on N players.
+            }
+
+            public void setup(String[] labels, java.util.function.Consumer<Integer> onComplete) {
+                this.onSelectionComplete = onComplete;
+                this.spinning = false;
+
+                info.setText("Click a player to choose first, or press Spin Random.");
+
+                cardsPanel.removeAll();
 
                 int n = labels.length;
                 cards = new JPanel[n];
+                pickButtons = new JButton[n];
 
                 int rows = (n <= 2) ? 1 : 2;
                 int cols = (n <= 2) ? 2 : 3;
-                JPanel center = new JPanel(new GridLayout(rows, cols, 12, 12));
-                center.setBorder(new EmptyBorder(12, 12, 12, 12));
+
+                centerGrid = new JPanel(new GridLayout(rows, cols, 20, 20));
+                centerGrid.setOpaque(false);
+                centerGrid.setBorder(new EmptyBorder(20, 20, 20, 20));
 
                 for (int i = 0; i < n; i++) {
                     JPanel card = new JPanel(new BorderLayout());
                     card.setBackground(Color.WHITE);
-                    card.setBorder(new LineBorder(Color.GRAY, 2));
-                    JLabel lab = new JLabel(labels[i], SwingConstants.CENTER);
-                    lab.setBorder(new EmptyBorder(18, 18, 18, 18));
-                    lab.setFont(lab.getFont().deriveFont(Font.BOLD, 14f));
-                    card.add(lab, BorderLayout.CENTER);
+                    card.setBorder(new LineBorder(BORDER_BROWN, 2));
+
+                    JButton pick = new JButton(labels[i]);
+                    pick.setFocusPainted(false);
+                    pick.setBorderPainted(false);
+                    pick.setContentAreaFilled(false);
+                    pick.setOpaque(false);
+                    pick.setFont(pick.getFont().deriveFont(Font.BOLD, 16f));
+                    pick.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+                    // pick.setMargin(new Insets(20, 20, 20, 20));
+                    // Margin on transparent button sometimes tricky, use JPanel padding
+
+                    final int idx = i;
+                    pick.addMouseListener(new java.awt.event.MouseAdapter() {
+                        @Override
+                        public void mouseEntered(java.awt.event.MouseEvent e) {
+                            if (!spinning)
+                                highlight(idx);
+                        }
+
+                        @Override
+                        public void mouseExited(java.awt.event.MouseEvent e) {
+                            if (!spinning)
+                                clearHighlight();
+                        }
+                    });
+
+                    pick.addActionListener(e -> choose(idx));
+
+                    card.add(pick, BorderLayout.CENTER);
+                    card.setPreferredSize(new Dimension(200, 100)); // Min size hint
+
                     cards[i] = card;
-                    center.add(card);
+                    pickButtons[i] = pick;
+                    centerGrid.add(card);
                 }
 
+                // Fillers
                 int totalCells = rows * cols;
                 for (int k = n; k < totalCells; k++) {
                     JPanel filler = new JPanel();
                     filler.setOpaque(false);
-                    center.add(filler);
+                    centerGrid.add(filler);
                 }
 
-                JButton spinBtn = new JButton("Spin");
-                spinBtn.setFocusPainted(false);
-                spinBtn.setPreferredSize(new Dimension(120, 34));
-
-                JButton cancelBtn = new JButton("Cancel");
-                cancelBtn.setFocusPainted(false);
-                cancelBtn.setPreferredSize(new Dimension(120, 34));
-
-                JPanel bottom = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 10));
-                bottom.add(spinBtn);
-                bottom.add(cancelBtn);
-
-                spinBtn.addActionListener(e -> runSpin(spinBtn, n));
-                cancelBtn.addActionListener(e -> { result = null; dispose(); });
-
-                setLayout(new BorderLayout());
-                add(info, BorderLayout.NORTH);
-                add(center, BorderLayout.CENTER);
-                add(bottom, BorderLayout.SOUTH);
-
-                highlight(0);
-                pack();
-                setResizable(false);
-                setLocationRelativeTo(owner);
+                cardsPanel.add(centerGrid);
+                revalidate();
+                repaint();
             }
 
-            Integer showAndGetResult() { setVisible(true); return result; }
+            private void choose(int idx) {
+                if (spinning)
+                    return;
+                info.setText("Selected: " + pickButtons[idx].getText() + " goes first.");
 
-            private void runSpin(JButton spinBtn, int n) {
+                // Flash verify then proceed
+                highlight(idx);
+                Timer t = new Timer(400, e -> {
+                    if (onSelectionComplete != null)
+                        onSelectionComplete.accept(idx);
+                });
+                t.setRepeats(false);
+                t.start();
+            }
+
+            private void runSpin(JButton spinBtn) {
+                if (spinning)
+                    return;
+                spinning = true;
+
+                // Disable valid inputs
+                for (JButton b : pickButtons)
+                    b.setEnabled(false);
                 spinBtn.setEnabled(false);
 
+                info.setText("Spinning...");
+
+                int n = cards.length;
                 int finalIndex = rand.nextInt(n);
                 int totalTicks = 20 + rand.nextInt(14);
-
-                final int[] tick = {0};
-                current = 0;
-                highlight(current);
+                final int[] tick = { 0 };
 
                 Timer timer = new Timer(70, null);
                 timer.addActionListener(ev -> {
                     tick[0]++;
-                    current = (current + 1) % n;
-                    highlight(current);
+                    int c = (tick[0]) % n; // purely sequential visual spin
+                    highlight(c);
+
                     timer.setDelay(70 + tick[0] * 10);
 
-                    if (tick[0] >= totalTicks - 1) {
-                        current = finalIndex;
-                        highlight(current);
-                    }
                     if (tick[0] >= totalTicks) {
                         timer.stop();
-                        result = finalIndex;
-                        info.setText("Result: " + labels[result] + " goes first.");
-                        Timer close = new Timer(650, e2 -> dispose());
-                        close.setRepeats(false);
-                        close.start();
+                        // Ensure we highlight the actual predetermined winner (visual trick: make last
+                        // tick match final)
+                        // Or just land on final. Let's strictly land on final.
+                        highlight(finalIndex);
+                        info.setText("Result: " + pickButtons[finalIndex].getText() + " goes first.");
+
+                        Timer proceed = new Timer(1000, e2 -> {
+                            spinBtn.setEnabled(true); // Restore just in case
+                            if (onSelectionComplete != null)
+                                onSelectionComplete.accept(finalIndex);
+                        });
+                        proceed.setRepeats(false);
+                        proceed.start();
                     }
                 });
                 timer.start();
             }
 
+            private void clearHighlight() {
+                for (JPanel c : cards) {
+                    c.setBackground(Color.WHITE);
+                    c.setBorder(new LineBorder(BORDER_BROWN, 2));
+                }
+            }
+
             private void highlight(int idx) {
                 Color on = new Color(255, 245, 180);
                 Color off = Color.WHITE;
-
                 for (int i = 0; i < cards.length; i++) {
                     if (i == idx) {
                         cards[i].setBackground(on);
-                        cards[i].setBorder(new LineBorder(new Color(160, 120, 0), 3));
+                        cards[i].setBorder(new LineBorder(ACCENT_GOLD, 4));
                     } else {
                         cards[i].setBackground(off);
-                        cards[i].setBorder(new LineBorder(Color.GRAY, 2));
+                        cards[i].setBorder(new LineBorder(BORDER_BROWN, 2));
                     }
                 }
             }
         }
 
         // ---------- Menu ----------
+
+        /**
+         * The main menu panel allowing users to select game mode, number of players,
+         * and enter names.
+         */
         private class MenuPanel extends JPanel {
 
             private final JRadioButton level1Btn = new JRadioButton("Level 1: Player vs Player", true);
@@ -875,37 +1403,37 @@ public class Connect5GUI {
             private final CardLayout levelCards = new CardLayout();
             private final JPanel levelPanel = new JPanel(levelCards);
 
-            private final JTextField l1p1 = new JTextField(16);
-            private final JTextField l1p2 = new JTextField(16);
+            private final JTextField l1p1 = new JTextField(22);
+            private final JTextField l1p2 = new JTextField(22);
 
-            private final JTextField l2human = new JTextField(16);
-            private final JComboBox<String> l2diff = new JComboBox<>(new String[]{"BEGINNER", "MEDIUM", "SMART"});
+            private final JTextField l2human = new JTextField(22);
+            private final JComboBox<String> l2diff = new JComboBox<>(new String[] { "BEGINNER", "MEDIUM", "SMART" });
 
-            private final JRadioButton mpHumansOnlyBtn = new JRadioButton("Multiplayer 3–4 players)", true);
-            private final JRadioButton mpVsAIBtn       = new JRadioButton("Players versus AI (3–4 players vs AI)");
+            private final JRadioButton mpHumansOnlyBtn = new JRadioButton("Multiplayer 3-4 players)", true);
+            private final JRadioButton mpVsAIBtn = new JRadioButton("Players versus AI (3-4 players vs AI)");
 
-            private final JComboBox<Integer> mpHumanCount = new JComboBox<>(new Integer[]{3, 4});
-            private final JTextField mpN1 = new JTextField(16);
-            private final JTextField mpN2 = new JTextField(16);
-            private final JTextField mpN3 = new JTextField(16);
-            private final JTextField mpN4 = new JTextField(16);
+            private final JComboBox<Integer> mpHumanCount = new JComboBox<>(new Integer[] { 3, 4 });
+            private final JTextField mpN1 = new JTextField(22);
+            private final JTextField mpN2 = new JTextField(22);
+            private final JTextField mpN3 = new JTextField(22);
+            private final JTextField mpN4 = new JTextField(22);
 
-            private final JComboBox<Integer> vsHumanCount = new JComboBox<>(new Integer[]{3, 4});
-            private final JTextField vsN1 = new JTextField(16);
-            private final JTextField vsN2 = new JTextField(16);
-            private final JTextField vsN3 = new JTextField(16);
-            private final JTextField vsN4 = new JTextField(16);
-            private final JComboBox<String> vsDiff = new JComboBox<>(new String[]{"BEGINNER", "MEDIUM", "SMART"});
+            private final JComboBox<Integer> vsHumanCount = new JComboBox<>(new Integer[] { 3, 4 });
+            private final JTextField vsN1 = new JTextField(22);
+            private final JTextField vsN2 = new JTextField(22);
+            private final JTextField vsN3 = new JTextField(22);
+            private final JTextField vsN4 = new JTextField(22);
+            private final JComboBox<String> vsDiff = new JComboBox<>(new String[] { "BEGINNER", "MEDIUM", "SMART" });
 
             private final JButton startBtn = new JButton("Start Game");
 
             MenuPanel() {
-                setBorder(new EmptyBorder(18, 18, 18, 18));
+                setBorder(new EmptyBorder(30, 20, 20, 20));
                 setLayout(new GridBagLayout());
                 setBackground(APP_BG);
 
                 JLabel title = new JLabel("Connect 5 (8x8)");
-                title.setFont(title.getFont().deriveFont(Font.BOLD, 20f));
+                title.setFont(title.getFont().deriveFont(Font.BOLD, 24f));
                 title.setForeground(TEXT_LIGHT);
 
                 JPanel selector = new JPanel();
@@ -913,8 +1441,7 @@ public class Connect5GUI {
                 selector.setBackground(CARD_BG);
                 selector.setBorder(BorderFactory.createCompoundBorder(
                         new LineBorder(BORDER_BROWN, 2),
-                        new EmptyBorder(10, 10, 10, 10)
-                ));
+                        new EmptyBorder(10, 10, 10, 10)));
 
                 ButtonGroup lv = new ButtonGroup();
                 lv.add(level1Btn);
@@ -960,32 +1487,32 @@ public class Connect5GUI {
                 mpHumanCount.addActionListener(e -> refreshLevel34Controls());
                 vsHumanCount.addActionListener(e -> refreshLevel34Controls());
 
-                startBtn.setPreferredSize(new Dimension(180, 38));
+                startBtn.setPreferredSize(new Dimension(200, 44));
                 startBtn.setFocusPainted(false);
                 startBtn.setBackground(ACCENT_GOLD);
                 startBtn.setForeground(TEXT_DARK);
+                startBtn.setFont(startBtn.getFont().deriveFont(Font.BOLD, 16f));
                 startBtn.addActionListener(e -> onStart());
 
                 refreshLevel34Controls();
 
                 GridBagConstraints g = new GridBagConstraints();
-                g.gridx = 0; g.gridy = 0; g.gridwidth = 2;
-                g.insets = new Insets(0, 0, 10, 0);
+                g.gridx = 0;
+                g.gridy = 0;
+                g.gridwidth = 2;
+                g.insets = new Insets(0, 0, 20, 0);
                 add(title, g);
 
                 g.gridy++;
-                g.insets = new Insets(0, 0, 16, 0);
+                g.insets = new Insets(0, 0, 20, 0);
 
                 g.gridy++;
-                g.insets = new Insets(0, 0, 14, 0);
                 add(selector, g);
 
                 g.gridy++;
-                g.insets = new Insets(0, 0, 14, 0);
                 add(levelPanel, g);
 
                 g.gridy++;
-                g.insets = new Insets(0, 0, 0, 0);
                 add(startBtn, g);
             }
 
@@ -993,6 +1520,7 @@ public class Connect5GUI {
                 rb.setOpaque(false);
                 rb.setForeground(TEXT_LIGHT);
                 rb.setFocusPainted(false);
+                rb.setFont(rb.getFont().deriveFont(Font.BOLD, 14f));
             }
 
             private JPanel buildCardPanel(String titleText) {
@@ -1000,17 +1528,17 @@ public class Connect5GUI {
                 p.setBackground(CARD_BG);
                 p.setBorder(BorderFactory.createCompoundBorder(
                         new LineBorder(BORDER_BROWN, 2),
-                        new EmptyBorder(12, 12, 12, 12)
-                ));
+                        new EmptyBorder(16, 16, 16, 16)));
                 JLabel t = new JLabel(titleText);
-                t.setFont(t.getFont().deriveFont(Font.BOLD, 14f));
+                t.setFont(t.getFont().deriveFont(Font.BOLD, 16f));
                 t.setForeground(TEXT_LIGHT);
 
                 GridBagConstraints g = new GridBagConstraints();
-                g.gridx = 0; g.gridy = 0;
+                g.gridx = 0;
+                g.gridy = 0;
                 g.gridwidth = 2;
                 g.anchor = GridBagConstraints.WEST;
-                g.insets = new Insets(0, 0, 10, 0);
+                g.insets = new Insets(0, 0, 14, 0);
                 p.add(t, g);
 
                 return p;
@@ -1019,7 +1547,7 @@ public class Connect5GUI {
             private JPanel buildLevel1Panel() {
                 JPanel p = buildCardPanel("Level 1: Player vs Player (2 players)");
                 GridBagConstraints g = new GridBagConstraints();
-                g.insets = new Insets(6, 6, 6, 6);
+                g.insets = new Insets(8, 8, 8, 8);
                 g.anchor = GridBagConstraints.WEST;
 
                 JLabel a = new JLabel("Player 1 Name:");
@@ -1027,16 +1555,34 @@ public class Connect5GUI {
                 a.setForeground(TEXT_LIGHT);
                 b.setForeground(TEXT_LIGHT);
 
-                g.gridx = 0; g.gridy = 1; p.add(a, g);
-                g.gridx = 1; p.add(l1p1, g);
+                g.gridx = 0;
+                g.gridy = 1;
+                p.add(a, g);
 
-                g.gridx = 0; g.gridy = 2; p.add(b, g);
-                g.gridx = 1; p.add(l1p2, g);
+                g.gridx = 1;
+                g.fill = GridBagConstraints.HORIZONTAL;
+                g.weightx = 1.0;
+                p.add(l1p1, g);
 
-                JLabel note = new JLabel("Spin chooses first. First chooses Black/White. Other gets opposite.");
+                g.gridx = 0;
+                g.gridy = 2;
+                g.fill = GridBagConstraints.NONE;
+                g.weightx = 0;
+                p.add(b, g);
+
+                g.gridx = 1;
+                g.fill = GridBagConstraints.HORIZONTAL;
+                g.weightx = 1.0;
+                p.add(l1p2, g);
+
+                JLabel note = new JLabel("Spin chooses first. First chooses Black/White.");
                 note.setForeground(TEXT_LIGHT);
                 note.setFont(note.getFont().deriveFont(12f));
-                g.gridx = 0; g.gridy = 3; g.gridwidth = 2;
+
+                g.gridx = 0;
+                g.gridy = 3;
+                g.gridwidth = 2;
+                g.fill = GridBagConstraints.HORIZONTAL;
                 p.add(note, g);
                 return p;
             }
@@ -1044,7 +1590,7 @@ public class Connect5GUI {
             private JPanel buildLevel2Panel() {
                 JPanel p = buildCardPanel("Level 2: Player vs Computer (AI)");
                 GridBagConstraints g = new GridBagConstraints();
-                g.insets = new Insets(6, 6, 6, 6);
+                g.insets = new Insets(8, 8, 8, 8);
                 g.anchor = GridBagConstraints.WEST;
 
                 JLabel a = new JLabel("Your Name:");
@@ -1052,16 +1598,34 @@ public class Connect5GUI {
                 a.setForeground(TEXT_LIGHT);
                 b.setForeground(TEXT_LIGHT);
 
-                g.gridx = 0; g.gridy = 1; p.add(a, g);
-                g.gridx = 1; p.add(l2human, g);
+                g.gridx = 0;
+                g.gridy = 1;
+                p.add(a, g);
 
-                g.gridx = 0; g.gridy = 2; p.add(b, g);
-                g.gridx = 1; p.add(l2diff, g);
+                g.gridx = 1;
+                g.fill = GridBagConstraints.HORIZONTAL;
+                g.weightx = 1.0;
+                p.add(l2human, g);
 
-                JLabel note = new JLabel("Spin chooses first (Player or AI). Then first chooses Black/White.");
+                g.gridx = 0;
+                g.gridy = 2;
+                g.fill = GridBagConstraints.NONE;
+                g.weightx = 0;
+                p.add(b, g);
+
+                g.gridx = 1;
+                g.fill = GridBagConstraints.HORIZONTAL;
+                g.weightx = 1.0;
+                p.add(l2diff, g);
+
+                JLabel note = new JLabel("Spin chooses first. First chooses Black/White.");
                 note.setForeground(TEXT_LIGHT);
                 note.setFont(note.getFont().deriveFont(12f));
-                g.gridx = 0; g.gridy = 3; g.gridwidth = 2;
+
+                g.gridx = 0;
+                g.gridy = 3;
+                g.gridwidth = 2;
+                g.fill = GridBagConstraints.HORIZONTAL;
                 p.add(note, g);
                 return p;
             }
@@ -1078,56 +1642,100 @@ public class Connect5GUI {
                 styleRadio(mpHumansOnlyBtn);
                 styleRadio(mpVsAIBtn);
 
-                g.gridx = 0; g.gridy = 1; g.gridwidth = 2; p.add(mpHumansOnlyBtn, g);
-                g.gridy++; p.add(mpVsAIBtn, g);
+                g.gridx = 0;
+                g.gridy = 1;
+                g.gridwidth = 2;
+                p.add(mpHumansOnlyBtn, g);
+                g.gridy++;
+                p.add(mpVsAIBtn, g);
 
-                JLabel hc = new JLabel("Players (3–4):");
+                JLabel hc = new JLabel("Players (3-4):");
                 hc.setForeground(TEXT_LIGHT);
-                g.gridy++; g.gridwidth = 1;
-                g.gridx = 0; p.add(hc, g);
-                g.gridx = 1; p.add(mpHumanCount, g);
+                g.gridy++;
+                g.gridwidth = 1;
+                g.gridx = 0;
+                p.add(hc, g);
+                g.gridx = 1;
+                p.add(mpHumanCount, g);
 
                 JLabel n1 = new JLabel("Player 1 Name:");
                 JLabel n2 = new JLabel("Player 2 Name:");
                 JLabel n3 = new JLabel("Player 3 Name:");
                 JLabel n4 = new JLabel("Player 4 Name:");
-                for (JLabel lab : new JLabel[]{n1,n2,n3,n4}) lab.setForeground(TEXT_LIGHT);
+                for (JLabel lab : new JLabel[] { n1, n2, n3, n4 })
+                    lab.setForeground(TEXT_LIGHT);
 
-                g.gridy++; g.gridx = 0; p.add(n1, g); g.gridx = 1; p.add(mpN1, g);
-                g.gridy++; g.gridx = 0; p.add(n2, g); g.gridx = 1; p.add(mpN2, g);
-                g.gridy++; g.gridx = 0; p.add(n3, g); g.gridx = 1; p.add(mpN3, g);
-                g.gridy++; g.gridx = 0; p.add(n4, g); g.gridx = 1; p.add(mpN4, g);
+                g.fill = GridBagConstraints.HORIZONTAL;
+                g.weightx = 1.0;
+                // Reset weight for labels? No, simplified loop:
+
+                insertFieldRow(p, g, n1, mpN1);
+                insertFieldRow(p, g, n2, mpN2);
+                insertFieldRow(p, g, n3, mpN3);
+                insertFieldRow(p, g, n4, mpN4);
 
                 JLabel sep = new JLabel(" ");
                 sep.setForeground(TEXT_LIGHT);
-                g.gridy++; g.gridx = 0; g.gridwidth = 2; p.add(sep, g);
+                g.gridy++;
+                g.gridx = 0;
+                g.gridwidth = 2;
+                p.add(sep, g);
                 g.gridwidth = 1;
 
-                JLabel vhc = new JLabel("Players vs AI (3–4):");
+                JLabel vhc = new JLabel("Players vs AI (3-4):");
                 vhc.setForeground(TEXT_LIGHT);
-                g.gridy++; g.gridx = 0; p.add(vhc, g);
-                g.gridx = 1; p.add(vsHumanCount, g);
+                g.gridy++;
+                g.gridx = 0;
+                g.fill = GridBagConstraints.NONE;
+                g.weightx = 0;
+                p.add(vhc, g);
+                g.gridx = 1;
+                p.add(vsHumanCount, g);
 
                 JLabel vn1 = new JLabel("Player 1 Name:");
                 JLabel vn2 = new JLabel("Player 2 Name:");
                 JLabel vn3 = new JLabel("Player 3 Name:");
                 JLabel vn4 = new JLabel("Player 4 Name:");
-                JLabel vd  = new JLabel("AI Difficulty:");
-                for (JLabel lab : new JLabel[]{vn1,vn2,vn3,vn4,vd}) lab.setForeground(TEXT_LIGHT);
+                JLabel vd = new JLabel("AI Difficulty:");
+                vd.setForeground(TEXT_LIGHT);
 
-                g.gridy++; g.gridx = 0; p.add(vn1, g); g.gridx = 1; p.add(vsN1, g);
-                g.gridy++; g.gridx = 0; p.add(vn2, g); g.gridx = 1; p.add(vsN2, g);
-                g.gridy++; g.gridx = 0; p.add(vn3, g); g.gridx = 1; p.add(vsN3, g);
-                g.gridy++; g.gridx = 0; p.add(vn4, g); g.gridx = 1; p.add(vsN4, g);
+                insertFieldRow(p, g, vn1, vsN1);
+                insertFieldRow(p, g, vn2, vsN2);
+                insertFieldRow(p, g, vn3, vsN3);
+                insertFieldRow(p, g, vn4, vsN4);
 
-                g.gridy++; g.gridx = 0; p.add(vd, g);  g.gridx = 1; p.add(vsDiff, g);
+                g.gridy++;
+                g.gridx = 0;
+                g.fill = GridBagConstraints.NONE;
+                g.weightx = 0;
+                p.add(vd, g);
+                g.gridx = 1;
+                g.fill = GridBagConstraints.HORIZONTAL;
+                g.weightx = 1.0;
+                p.add(vsDiff, g);
 
-                JLabel note = new JLabel("Spin chooses first players use Black/White/Blue/Green. AI uses Green (3 players s) or Red (4 players).");
+                JLabel note = new JLabel("Spin chooses first.");
                 note.setForeground(TEXT_LIGHT);
                 note.setFont(note.getFont().deriveFont(12f));
-                g.gridy++; g.gridx = 0; g.gridwidth = 2; p.add(note, g);
+                g.gridy++;
+                g.gridx = 0;
+                g.gridwidth = 2;
+                p.add(note, g);
 
                 return p;
+            }
+
+            private void insertFieldRow(JPanel p, GridBagConstraints g, JLabel lab, JComponent field) {
+                g.gridy++;
+                g.gridx = 0;
+                g.fill = GridBagConstraints.NONE;
+                g.weightx = 0;
+                p.add(lab, g);
+
+                g.gridx = 1;
+                g.fill = GridBagConstraints.HORIZONTAL;
+                g.weightx = 1.0;
+                p.add(field, g);
             }
 
             private void refreshLevel34Controls() {
@@ -1150,160 +1758,188 @@ public class Connect5GUI {
                 vsN4.setEnabled(vsAI && vsCount == 4);
                 vsDiff.setEnabled(vsAI);
 
-                JTextField[] all = new JTextField[]{mpN1, mpN2, mpN3, mpN4, vsN1, vsN2, vsN3, vsN4};
-                for (JTextField f : all) f.setBackground(f.isEnabled() ? Color.WHITE : new Color(230, 230, 230));
+                JTextField[] all = new JTextField[] { mpN1, mpN2, mpN3, mpN4, vsN1, vsN2, vsN3, vsN4 };
+                for (JTextField f : all)
+                    f.setBackground(f.isEnabled() ? Color.WHITE : new Color(230, 230, 230));
             }
 
             private void onStart() {
-                if (level1Btn.isSelected()) startLevel1();
-                else if (level2Btn.isSelected()) startLevel2();
-                else startLevel34();
+                if (level1Btn.isSelected())
+                    startLevel1();
+                else if (level2Btn.isSelected())
+                    startLevel2();
+                else
+                    startLevel34();
+            }
+
+            // Retrieve the parent ConnectFrame to switch to SPIN
+            private ConnectFrame getFrame() {
+                Container p = getParent();
+                while (p != null && !(p instanceof ConnectFrame))
+                    p = p.getParent();
+                return (ConnectFrame) p;
             }
 
             private void startLevel1() {
                 String p1 = l1p1.getText().trim();
                 String p2 = l1p2.getText().trim();
                 if (p1.isEmpty() || p2.isEmpty()) {
-                    JOptionPane.showMessageDialog(ConnectFrame.this, "Please enter both player names.", "Missing Names", JOptionPane.WARNING_MESSAGE);
+                    JOptionPane.showMessageDialog(this, "Please enter both player names.", "Missing Names",
+                            JOptionPane.WARNING_MESSAGE);
                     return;
                 }
 
-                String[] labels = new String[]{ p1 + " (Player 1)", p2 + " (Player 2)" };
-                SpinDialogN spin = new SpinDialogN(ConnectFrame.this, "Who Goes First?", labels);
-                Integer firstIdx = spin.showAndGetResult();
-                if (firstIdx == null) return;
+                String[] labels = new String[] { p1 + " (Player 1)", p2 + " (Player 2)" };
 
-                String firstName = (firstIdx == 0) ? p1 : p2;
+                ConnectFrame cf = getFrame();
+                if (cf == null)
+                    return;
 
-                Character firstColor = chooseBlackOrWhite(
-                        ConnectFrame.this,
-                        "Choose Color",
-                        firstName + " goes first.\nChoose your piece color:"
-                );
-                if (firstColor == null) return;
+                cf.showSpin(labels, (firstIdx) -> {
+                    // Logic after spin
+                    String firstName = (firstIdx == 0) ? p1 : p2;
+                    Character firstColor = chooseBlackOrWhite(cf, "Choose Color",
+                            firstName + " goes first.\nChoose your piece color:");
+                    if (firstColor == null) {
+                        cf.showMenu();
+                        return;
+                    } // canceled
 
-                char secondColor = (firstColor == BLACK) ? WHITE : BLACK;
+                    char secondColor = (firstColor == BLACK) ? WHITE : BLACK;
+                    Player pl1 = new Player(p1, (firstIdx == 0) ? firstColor : secondColor);
+                    Player pl2 = new Player(p2, (firstIdx == 1) ? firstColor : secondColor);
 
-                Player pl1 = new Player(p1, (firstIdx == 0) ? firstColor : secondColor);
-                Player pl2 = new Player(p2, (firstIdx == 1) ? firstColor : secondColor);
-
-                gamePanel.startNewGame(new Player[]{pl1, pl2}, firstIdx, "Level 1");
-                cards.show(root, "GAME");
+                    cf.gamePanel.startNewGame(new Player[] { pl1, pl2 }, firstIdx, "Level 1");
+                    cards.show(root, "GAME");
+                });
             }
 
             private void startLevel2() {
                 String humanName = l2human.getText().trim();
-                if (humanName.isEmpty()) humanName = "Player";
-
+                if (humanName.isEmpty())
+                    humanName = "Player";
                 String diff = (String) l2diff.getSelectedItem();
-                if (diff == null) diff = "BEGINNER";
+                if (diff == null)
+                    diff = "BEGINNER"; // fallback
 
                 Player human = new Player(humanName, BLACK);
-                AIPlayer ai  = new AIPlayer("Computer", WHITE, diff);
-                Player[] players = new Player[]{human, ai};
+                AIPlayer ai = new AIPlayer("Computer", WHITE, diff);
+                Player[] players = new Player[] { human, ai };
 
-                String[] labels = new String[]{ human.name + " (Player)", ai.name + " (AI)" };
-                SpinDialogN spin = new SpinDialogN(ConnectFrame.this, "Who Goes First? (Level 2)", labels);
-                Integer firstIdx = spin.showAndGetResult();
-                if (firstIdx == null) return;
+                String[] labels = new String[] { human.name + " (Player)", ai.name + " (AI)" };
 
-                if (firstIdx == 0) {
-                    Character humanColor = chooseBlackOrWhite(
-                            ConnectFrame.this,
-                            "Choose Color",
-                            human.name + " goes first.\nChoose your piece color:"
-                    );
-                    if (humanColor == null) return;
+                ConnectFrame cf = getFrame();
+                if (cf == null)
+                    return;
 
-                    human.symbol = humanColor;
-                    ai.symbol = (humanColor == BLACK) ? WHITE : BLACK;
-                } else {
-                    Character aiColor = chooseBlackOrWhite(
-                            ConnectFrame.this,
-                            "Choose AI Color",
-                            "Computer goes first.\nChoose the Computer's piece color:"
-                    );
-                    if (aiColor == null) return;
-
-                    ai.symbol = aiColor;
-                    human.symbol = (aiColor == BLACK) ? WHITE : BLACK;
-                }
-
-                gamePanel.startNewGame(players, firstIdx, "Level 2");
-                cards.show(root, "GAME");
+                cf.showSpin(labels, (firstIdx) -> {
+                    if (firstIdx == 0) {
+                        Character humanColor = chooseBlackOrWhite(cf, "Choose Color",
+                                human.name + " goes first.\nChoose your piece color:");
+                        if (humanColor == null) {
+                            cf.showMenu();
+                            return;
+                        }
+                        human.symbol = humanColor;
+                        ai.symbol = (humanColor == BLACK) ? WHITE : BLACK;
+                    } else {
+                        Character aiColor = chooseBlackOrWhite(cf, "Choose AI Color",
+                                "Computer goes first.\nChoose the Computer's piece color:");
+                        if (aiColor == null) {
+                            cf.showMenu();
+                            return;
+                        }
+                        ai.symbol = aiColor;
+                        human.symbol = (aiColor == BLACK) ? WHITE : BLACK;
+                    }
+                    cf.gamePanel.startNewGame(players, firstIdx, "Level 2");
+                    cards.show(root, "GAME");
+                });
             }
 
             private void startLevel34() {
                 boolean vsAI = mpVsAIBtn.isSelected();
-
                 if (!vsAI) {
                     int humans = (Integer) mpHumanCount.getSelectedItem();
-
                     Player[] players = new Player[humans];
-                    JTextField[] fields = new JTextField[]{mpN1, mpN2, mpN3, mpN4};
+                    JTextField[] fields = new JTextField[] { mpN1, mpN2, mpN3, mpN4 };
 
                     for (int i = 0; i < humans; i++) {
                         String nm = fields[i].getText().trim();
-                        if (nm.isEmpty()) nm = "Player " + (i + 1);
-                        players[i] = new Player(nm, COLOR_ORDER[i]); // B,W,U,G
+                        if (nm.isEmpty())
+                            nm = "Player " + (i + 1);
+                        players[i] = new Player(nm, COLOR_ORDER[i]);
                     }
-
                     String[] labels = new String[humans];
-                    for (int i = 0; i < humans; i++) labels[i] = players[i].name + " - " + colorName(players[i].symbol);
+                    for (int i = 0; i < humans; i++)
+                        labels[i] = players[i].name + " - " + colorName(players[i].symbol);
 
-                    SpinDialogN spin = new SpinDialogN(ConnectFrame.this, "Who Goes First? (Level 3-4)", labels);
-                    Integer firstIdx = spin.showAndGetResult();
-                    if (firstIdx == null) return;
+                    ConnectFrame cf = getFrame();
+                    if (cf == null)
+                        return;
 
-                    gamePanel.startNewGame(players, firstIdx, "Level 3-4 (Players only)");
-                    cards.show(root, "GAME");
+                    cf.showSpin(labels, (firstIdx) -> {
+                        cf.gamePanel.startNewGame(players, firstIdx, "Level 3-4 (Players only)");
+                        cards.show(root, "GAME");
+                    });
 
                 } else {
                     int humans = (Integer) vsHumanCount.getSelectedItem();
                     String diff = (String) vsDiff.getSelectedItem();
-                    if (diff == null) diff = "BEGINNER";
+                    if (diff == null)
+                        diff = "BEGINNER";
 
                     Player[] players = new Player[humans + 1];
-                    JTextField[] fields = new JTextField[]{vsN1, vsN2, vsN3, vsN4};
-
+                    JTextField[] fields = new JTextField[] { vsN1, vsN2, vsN3, vsN4 };
                     for (int i = 0; i < humans; i++) {
                         String nm = fields[i].getText().trim();
-                        if (nm.isEmpty()) nm = "Player " + (i + 1);
-                        players[i] = new Player(nm, COLOR_ORDER[i]); // B,W,U,(G)
+                        if (nm.isEmpty())
+                            nm = "Player " + (i + 1);
+                        players[i] = new Player(nm, COLOR_ORDER[i]);
                     }
-
-                    char aiColor = (humans == 3) ? GREEN : RED; // keep AI distinct
+                    char aiColor = (humans == 3) ? GREEN : RED;
                     players[humans] = new AIPlayer("Computer", aiColor, diff);
 
                     String[] labels = new String[humans + 1];
-                    for (int i = 0; i < humans; i++) labels[i] = players[i].name + " - " + colorName(players[i].symbol);
+                    for (int i = 0; i < humans; i++)
+                        labels[i] = players[i].name + " - " + colorName(players[i].symbol);
                     labels[humans] = players[humans].name + " (AI) - " + colorName(players[humans].symbol);
 
-                    SpinDialogN spin = new SpinDialogN(ConnectFrame.this, "Who Goes First? (Level 3-4 vs AI)", labels);
-                    Integer firstIdx = spin.showAndGetResult();
-                    if (firstIdx == null) return;
+                    ConnectFrame cf = getFrame();
+                    if (cf == null)
+                        return;
 
-                    gamePanel.startNewGame(players, firstIdx, "Level 3-4 (" + humans + " Humans vs AI)");
-                    cards.show(root, "GAME");
+                    cf.showSpin(labels, (firstIdx) -> {
+                        cf.gamePanel.startNewGame(players, firstIdx, "Level 3-4 (" + humans + " Humans vs AI)");
+                        cards.show(root, "GAME");
+                    });
                 }
             }
         }
 
         // ---------- Game Panel (resizable) ----------
+        /**
+         * The actual game board panel where the grid and game status are displayed.
+         */
         private class GamePanel extends JPanel {
 
             private final JLabel titleLabel = new JLabel();
             private final JLabel turnLabel = new JLabel();
+            private final JLabel timerLabel = new JLabel("Time: 10");
             private final JLabel phaseLabel = new JLabel();
             private final JLabel statusLabel = new JLabel(" ");
 
             private final JPanel playersBox = new JPanel();
-            private final JLabel[] playerLabels = new JLabel[]{ new JLabel(), new JLabel(), new JLabel(), new JLabel(), new JLabel() };
+            private final JLabel[] playerLabels = new JLabel[] { new JLabel(), new JLabel(), new JLabel(), new JLabel(),
+                    new JLabel() };
 
             private final JPanel grid = new JPanel(new GridLayout(9, 9, 3, 3));
+
             private final JButton[][] squares = new JButton[8][8];
 
             private Game game;
+            private Timer turnLimitTimer;
+            private int secondsLeft = 10;
 
             private final JButton drawBtn = new JButton("Offer / Accept Draw");
             private final JButton backBtn = new JButton("Back to Menu");
@@ -1318,18 +1954,51 @@ public class Connect5GUI {
                 add(buildBoard(), BorderLayout.CENTER);
                 add(buildStatusBar(), BorderLayout.SOUTH);
 
+                // Timer tick every 1 second
+                turnLimitTimer = new Timer(1000, e -> {
+                    if (game == null || game.isGameOver()) {
+                        turnLimitTimer.stop();
+                        return;
+                    }
+                    secondsLeft--;
+                    if (secondsLeft < 0)
+                        secondsLeft = 0;
+                    updateTimerLabel();
+                    if (secondsLeft == 0) {
+                        // Optional: Force random move or just alert?
+                        // For now just alert visually
+                        timerLabel.setForeground(Color.RED);
+                    }
+                });
+
                 // When window is resized, re-render so icons scale to new button sizes
                 addComponentListener(new java.awt.event.ComponentAdapter() {
-                    @Override public void componentResized(java.awt.event.ComponentEvent e) { render(); }
+                    @Override
+                    public void componentResized(java.awt.event.ComponentEvent e) {
+                        render();
+                    }
                 });
+            }
+
+            private void updateTimerLabel() {
+                timerLabel.setText("Time: " + secondsLeft + "s");
+                if (secondsLeft <= 3)
+                    timerLabel.setForeground(Color.RED);
+                else
+                    timerLabel.setForeground(TEXT_LIGHT);
+            }
+
+            private void resetTurnTimer() {
+                secondsLeft = 10;
+                updateTimerLabel();
+                turnLimitTimer.restart();
             }
 
             private JPanel buildHeader() {
                 JPanel header = new JPanel(new BorderLayout(12, 12));
                 header.setBorder(BorderFactory.createCompoundBorder(
                         new LineBorder(BORDER_BROWN, 2),
-                        new EmptyBorder(10, 10, 10, 10)
-                ));
+                        new EmptyBorder(10, 10, 10, 10)));
                 header.setBackground(PANEL_BG);
 
                 JPanel left = new JPanel();
@@ -1353,9 +2022,14 @@ public class Connect5GUI {
                     playersBox.add(Box.createVerticalStrut(2));
                 }
 
+                timerLabel.setFont(timerLabel.getFont().deriveFont(Font.BOLD, 22f));
+                timerLabel.setForeground(TEXT_LIGHT);
+
                 left.add(titleLabel);
                 left.add(Box.createVerticalStrut(6));
                 left.add(turnLabel);
+                left.add(Box.createVerticalStrut(4));
+                left.add(timerLabel); // Add timer to display
                 left.add(Box.createVerticalStrut(4));
                 left.add(phaseLabel);
                 left.add(Box.createVerticalStrut(10));
@@ -1366,7 +2040,7 @@ public class Connect5GUI {
                 right.setBackground(PANEL_BG);
 
                 Dimension btnSize = new Dimension(170, 34);
-                for (JButton b : new JButton[]{drawBtn, backBtn, quitBtn}) {
+                for (JButton b : new JButton[] { drawBtn, backBtn, quitBtn }) {
                     b.setMaximumSize(btnSize);
                     b.setPreferredSize(btnSize);
                     b.setAlignmentX(Component.CENTER_ALIGNMENT);
@@ -1382,9 +2056,9 @@ public class Connect5GUI {
                                 ConnectFrame.this,
                                 "Return to menu? Current game will be abandoned.",
                                 "Confirm",
-                                JOptionPane.YES_NO_OPTION
-                        );
-                        if (ok != JOptionPane.YES_OPTION) return;
+                                JOptionPane.YES_NO_OPTION);
+                        if (ok != JOptionPane.YES_OPTION)
+                            return;
                     }
                     cards.show(root, "MENU");
                 });
@@ -1407,8 +2081,7 @@ public class Connect5GUI {
 
                 grid.setBorder(BorderFactory.createCompoundBorder(
                         new LineBorder(BORDER_BROWN, 2),
-                        new EmptyBorder(10, 10, 10, 10)
-                ));
+                        new EmptyBorder(10, 10, 10, 10)));
                 grid.setBackground(PANEL_BG);
 
                 JLabel corner = new JLabel("");
@@ -1474,14 +2147,16 @@ public class Connect5GUI {
                 Logger logger = new Logger(logName);
 
                 logger.writeToFile("Connect on 8x8 Log");
-                logger.writeToFile("Started: " + LocalDateTime.now().withNano(0));
+                DateTimeFormatter fmt = DateTimeFormatter.ofPattern("yyyy-MM-dd hh:mm:ss a");
+                logger.writeToFile("Started: " + LocalDateTime.now().format(fmt));
                 logger.writeToFile("Mode: " + modeName);
                 logger.writeToFile("Connect target: 5");
                 logger.writeToFile("Pieces per participant: 8");
                 logger.writeToFile("Participants: " + players.length);
                 for (int i = 0; i < players.length; i++) {
                     Player p = players[i];
-                    logger.writeToFile("P" + (i + 1) + ": " + p.name + " (" + colorName(p.symbol) + ")" + (p instanceof AIPlayer ? " AI" : ""));
+                    logger.writeToFile("P" + (i + 1) + ": " + p.name + " (" + colorName(p.symbol) + ")"
+                            + (p instanceof AIPlayer ? " AI" : ""));
                 }
                 logger.writeToFile("------------------------------------------------------------");
 
@@ -1493,24 +2168,49 @@ public class Connect5GUI {
 
                 enableBoard();
                 render();
+
+                resetTurnTimer(); // Start timer for first turn
                 triggerAIIfNeeded();
             }
 
             private void onDraw() {
-                if (game == null) return;
-                if (!game.drawAvailable()) { statusLabel.setText("Draw is only available in Level 1 (2 players)."); return; }
-                if (game.currentPlayer() instanceof AIPlayer) { statusLabel.setText("It's the computer's turn."); return; }
+                if (game == null)
+                    return;
+                if (!game.drawAvailable()) {
+                    statusLabel.setText("Draw is only available in Level 1 (2 players).");
+                    return;
+                }
+                if (game.currentPlayer() instanceof AIPlayer) {
+                    statusLabel.setText("It's the computer's turn.");
+                    return;
+                }
 
                 String msg = game.offerOrAcceptDraw();
                 statusLabel.setText(msg);
+                // If turn count changed (draw might not change turn, but here offer/accept
+                // logic is complex.
+                // Simplest: if draw accepted -> game over. If offer -> turn swaps?
+                // Game logic says "offerOrAcceptDraw" does "switchPlayer" if offering.
+                // So we should check if player index changed.)
+
                 render();
                 checkGameOverPopup();
+                // If game not over, reset timer for next player?
+                // Ideally track 'currentPlayerIndex' before/after.
+                // For simplicity, just reset if game active.
+                if (!game.isGameOver())
+                    resetTurnTimer();
+
                 triggerAIIfNeeded();
             }
 
             private void onSquareClicked(int col, int displayRow) {
-                if (game == null) return;
-                if (game.currentPlayer() instanceof AIPlayer) { statusLabel.setText("Computer is thinking..."); return; }
+                if (game == null)
+                    return;
+                if (game.currentPlayer() instanceof AIPlayer) {
+                    statusLabel.setText("Computer is thinking...");
+                    return;
+                }
 
                 int r = 7 - displayRow;
                 int c = col;
@@ -1518,39 +2218,102 @@ public class Connect5GUI {
                 String msg = game.handleClick(c, r);
                 statusLabel.setText(msg);
 
+                // If valid move (contains PLACE or MOVE), turn changed.
+                if (msg.contains("PLACE") || msg.contains("MOVE")) {
+                    resetTurnTimer();
+                }
+
                 render();
                 checkGameOverPopup();
                 triggerAIIfNeeded();
             }
 
             private void triggerAIIfNeeded() {
-                if (game == null || game.isGameOver()) return;
-                if (!(game.currentPlayer() instanceof AIPlayer)) return;
+                if (game == null || game.isGameOver()) {
+                    turnLimitTimer.stop();
+                    return;
+                }
+                if (!(game.currentPlayer() instanceof AIPlayer))
+                    return;
 
                 disableBoard();
 
-                Timer t = new Timer(350, null);
-                t.addActionListener(e -> {
-                    ((Timer) e.getSource()).stop();
+                // Run AI in background thread to keep Timer animating
+                new Thread(() -> {
+                    // Small delay to let user see board update
+                    try {
+                        Thread.sleep(400);
+                    } catch (InterruptedException ignored) {
+                    }
 
-                    if (game == null || game.isGameOver()) { disableBoard(); return; }
-                    if (!(game.currentPlayer() instanceof AIPlayer)) { enableBoard(); render(); return; }
+                    // Double check state
+                    if (game == null || game.isGameOver())
+                        return;
 
-                    String msg = game.performAITurn();
-                    statusLabel.setText(msg);
+                    // Compute move (taking up to 9.5s)
+                    // We must be careful not to touch Swing components here,
+                    // but game.performAITurn() updates game model which IS valid if we own the
+                    // lock?
+                    // Swing is single separate thread. We are reader/writer here.
+                    // 'game' is not synchronized. But user input is disabled.
+                    // So only 'render()' (EDT) and this thread access 'game'.
+                    // 'performAITurn' calculates then writes.
+                    // To be safe, we calculate move, then apply on EDT?
+                    // Or just invokeAndWait for the apply part?
+                    // 'performAITurn' does both.
+                    // Given 'pickMove' is 99% of time, let's call pickMove here (need cast).
 
-                    render();
-                    checkGameOverPopup();
+                    AIPlayer ai = (AIPlayer) game.currentPlayer();
+                    AIPlayer.Move bestCheck = ai.pickMove(game);
 
-                    if (!game.isGameOver()) enableBoard();
-                    else disableBoard();
-                });
-                t.setRepeats(false);
-                t.start();
+                    // Now apply on EDT
+                    SwingUtilities.invokeLater(() -> {
+                        if (game == null || game.isGameOver())
+                            return;
+                        // verify it's still AI turn (should be)
+                        if (game.currentPlayer() != ai)
+                            return;
+
+                        String desc;
+                        if (bestCheck == null) {
+                            desc = "AI has no valid moves.";
+                        } else {
+                            if ("PLACEMENT".equals(game.gamePhase)) {
+                                game.board.placePiece(new int[] { bestCheck.toC, bestCheck.toR }, ai.symbol);
+                                ai.piecesPlaced++;
+                                desc = ai.name + " (AI) PLACE " + Board.posToLabel(bestCheck.toC, bestCheck.toR);
+                                if (game.allPlayersPlaced())
+                                    game.gamePhase = "MOVEMENT";
+                            } else {
+                                game.board.movePiece(new int[] { bestCheck.fromC, bestCheck.fromR },
+                                        new int[] { bestCheck.toC, bestCheck.toR }, ai.symbol);
+                                desc = ai.name + " (AI) MOVE " + Board.posToLabel(bestCheck.fromC, bestCheck.fromR)
+                                        + " -> " + Board.posToLabel(bestCheck.toC, bestCheck.toR);
+                            }
+                            game.logTurn(desc);
+                            game.advanceTurn();
+                        }
+
+                        statusLabel.setText(desc);
+                        resetTurnTimer(); // Reset for next player
+
+                        render();
+                        checkGameOverPopup();
+
+                        if (!game.isGameOver())
+                            enableBoard();
+                        else
+                            disableBoard();
+
+                        // Chain reaction if next is also AI?
+                        triggerAIIfNeeded();
+                    });
+                }).start();
             }
 
             private void checkGameOverPopup() {
-                if (game == null) return;
+                if (game == null)
+                    return;
                 game.checkWinner();
 
                 if (game.winner != null) {
@@ -1567,11 +2330,15 @@ public class Connect5GUI {
             }
 
             private void disableBoard() {
-                for (int dr = 0; dr < 8; dr++) for (int c = 0; c < 8; c++) squares[dr][c].setEnabled(false);
+                for (int dr = 0; dr < 8; dr++)
+                    for (int c = 0; c < 8; c++)
+                        squares[dr][c].setEnabled(false);
             }
 
             private void enableBoard() {
-                for (int dr = 0; dr < 8; dr++) for (int c = 0; c < 8; c++) squares[dr][c].setEnabled(true);
+                for (int dr = 0; dr < 8; dr++)
+                    for (int c = 0; c < 8; c++)
+                        squares[dr][c].setEnabled(true);
             }
 
             private int computeCellPx() {
@@ -1579,7 +2346,8 @@ public class Connect5GUI {
                 // leaving some safety for borders/gaps.
                 int w = grid.getWidth();
                 int h = grid.getHeight();
-                if (w <= 0 || h <= 0) return 24;
+                if (w <= 0 || h <= 0)
+                    return 24;
 
                 int cellW = w / 9;
                 int cellH = h / 9;
@@ -1587,7 +2355,8 @@ public class Connect5GUI {
             }
 
             private void render() {
-                if (game == null) return;
+                if (game == null)
+                    return;
 
                 Player cur = game.currentPlayer();
                 String curName = cur.name + ((cur instanceof AIPlayer) ? " (AI)" : "");
@@ -1598,7 +2367,19 @@ public class Connect5GUI {
                     if (i < game.players.length) {
                         Player p = game.players[i];
                         String extra = (p instanceof AIPlayer) ? (" | AI: " + ((AIPlayer) p).difficulty) : "";
-                        playerLabels[i].setText("P" + (i + 1) + ": " + p.name + " (" + colorName(p.symbol) + ") | placed: " + p.piecesPlaced + extra);
+                        playerLabels[i].setText("P" + (i + 1) + ": " + p.name + " (" + colorName(p.symbol)
+                                + ") | placed: " + p.piecesPlaced + extra);
+
+                        // Highlight active player
+                        if (i == game.currentPlayerIndex) {
+                            playerLabels[i].setForeground(ACCENT_GOLD);
+                            playerLabels[i].setFont(playerLabels[i].getFont().deriveFont(Font.BOLD));
+                            playerLabels[i].setBorder(new LineBorder(ACCENT_GOLD, 1));
+                        } else {
+                            playerLabels[i].setForeground(TEXT_LIGHT);
+                            playerLabels[i].setFont(playerLabels[i].getFont().deriveFont(Font.PLAIN));
+                            playerLabels[i].setBorder(null);
+                        }
                         playerLabels[i].setVisible(true);
                     } else {
                         playerLabels[i].setText("");
